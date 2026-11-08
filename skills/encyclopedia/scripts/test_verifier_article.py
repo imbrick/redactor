@@ -13,9 +13,9 @@ from pathlib import Path
 import projet
 import verifier_article as va
 
-# Configuration d'un projet complet : celle de Kongopedia, qui a servi de modèle au skill.
+# Configuration d'un projet complet, avec des champs et des dossiers personnalisés.
 CONFIG_COMPLETE = {
-    "projet": "Kongopedia",
+    "projet": "Encyclopédie de test",
     "dossier_articles": "articles",
     "fichiers_index": ["INDEX.md", "INDEX-ALPHABETIQUE.md"],
     "dossier_brainstorm": "ressources/brainstorm",
@@ -237,7 +237,7 @@ class TestCorps(DepotTemporaire):
 
 
 class TestQualiteEtPreuve(DepotTemporaire):
-    """Contrôles tirés du fact-check de l'os d'Ishango (fiche revision-enrichissement.md)."""
+    """Signaux de preuve et de rédaction (fiche revision-enrichissement.md)."""
 
     def test_chiffre_sans_note_signale(self):
         corps = BON_CORPS.replace("d'altitude[^1].", "d'altitude[^1].\n\nSa profondeur atteint 485 m.")

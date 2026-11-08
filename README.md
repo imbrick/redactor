@@ -69,7 +69,7 @@ Le skill ne connaît aucun projet en particulier. Chaque projet décrit ses conv
 | `champ_statut`, `statuts` | statut de publication et valeurs admises | `publication_status`, `["draft", "review", "published"]` |
 | `prefixe_liens` | route des liens internes | `/article/` |
 
-Exemple complet : [`exemples/redactor.json`](exemples/redactor.json). [Kongopedia](https://github.com/imbrick/kongopedia), l'encyclopédie francophone pour laquelle le skill a été écrit, en a un à la racine de son dépôt.
+Exemple complet : [`exemples/redactor.json`](exemples/redactor.json).
 
 ## `redactor:presse`
 

@@ -93,7 +93,7 @@ Couper fait aussi partie de l'enrichissement : un article plus court mais entiè
 
 ## 8. Contrôles
 
-`verifier_article.py` signale les symptômes que le fact-check d'Ishango a révélés :
+`verifier_article.py` signale les symptômes les plus fréquents relevés en fact-check :
 
 | Code | Symptôme | Réponse |
 |---|---|---|
