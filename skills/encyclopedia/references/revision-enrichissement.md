@@ -101,6 +101,7 @@ Couper fait aussi partie de l'enrichissement : un article plus court mais entiè
 | `STYLE_AFFIRMATION_FORTE` | « démontre que », « prouve que », « preuve tangible »… | attribuer l'interprétation à son auteur |
 | `DATATION_MIXTE` | « av. J.-C. » et « BP / avant le présent » dans le même article | choisir un repère, ou convertir explicitement |
 | `BIBLIO_SUSPECTE` | « publication interne », « document interne » en bibliographie | vérifier l'existence, sinon retirer |
+| `NOTE_SOURCE_WIKIPEDIA` | note qui s'appuie sur Wikipédia | remonter à la source citée par la page et la citer à la place |
 | `PROSE_LISTES` | section où les puces dominent la prose | convertir en raisonnement (section 5) |
 | `PROSE_FRAGMENTEE` | trop de paragraphes très courts | regrouper et relier (sections 3 et 4) |
 

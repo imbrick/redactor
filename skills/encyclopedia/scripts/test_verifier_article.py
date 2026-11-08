@@ -253,6 +253,20 @@ class TestQualiteEtPreuve(DepotTemporaire):
         milliers = BON_CORPS.replace("d'altitude[^1].", "d'altitude[^1].\n\nIl est occupé il y a 20 000 ans.")
         self.assertIn("PREUVE_CHIFFRE_SANS_NOTE", codes(self.verifier(corps=milliers)))
 
+    def test_table_des_matieres_non_signalee(self):
+        toc = "## Table des matières\n\n1. [Histoire 1885–1960](#histoire)\n2. [Les 26 provinces](#provinces)\n\n"
+        corps = BON_CORPS.replace("## Bibliographie", toc + "## Bibliographie")
+        self.assertNotIn("PREUVE_CHIFFRE_SANS_NOTE", codes(self.verifier(corps=corps)))
+
+    def test_note_fondee_sur_wikipedia_signalee(self):
+        corps = BON_CORPS + "\n[^2]: Notice « Lac Kivu » de Wikipédia en anglais, consultée en 2026.\n"
+        corps = corps.replace("d'altitude[^1].", "d'altitude[^1][^2].")
+        resultats = self.verifier(corps=corps)
+        self.assertIn("NOTE_SOURCE_WIKIPEDIA", codes(resultats))
+
+    def test_note_sans_wikipedia_non_signalee(self):
+        self.assertNotIn("NOTE_SOURCE_WIKIPEDIA", codes(self.verifier()))
+
     def test_affirmation_forte_signalee(self):
         corps = BON_CORPS.replace("Il se situe", "Cela démontre que l'Afrique est le berceau du calcul. Il se situe")
         self.assertIn("STYLE_AFFIRMATION_FORTE", codes(self.verifier(corps=corps)))

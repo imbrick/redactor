@@ -72,7 +72,11 @@ ANNEE_RE = re.compile(r"1\d{3}|20\d{2}")
 PUCE_RE = re.compile(r"^\s*(?:[-*+]|\d+\.)\s+\S", re.MULTILINE)
 TITRE_RE = re.compile(r"^(#{2,6}) +(.+?)\s*$", re.MULTILINE)
 NUMERO_TITRE_RE = re.compile(r"^(?:[ivxlc]+|\d+)\.\s*")
-SECTIONS_HORS_PROSE = ("notes", "bibliograph", "chronolog", "sources", "voir aussi", "références")
+SECTIONS_HORS_PROSE = ("notes", "bibliograph", "chronolog", "sources", "voir aussi", "références",
+                       "table des matières", "sommaire")
+# Définition de note complète, jusqu'à la suivante ou à la fin du texte.
+NOTE_COMPLETE_RE = re.compile(r"^\[\^([^\]\s]+)\]:(.*?)(?=^\[\^[^\]\s]+\]:|\Z)", re.MULTILINE | re.DOTALL)
+WIKIPEDIA_RE = re.compile(r"wikip[ée]dia", re.IGNORECASE)
 LIEN_RE = re.compile(r"(?<!!)\[([^\]]+)\]\(([^)\s]+)\)")
 PARENTHESES_RE = re.compile(r"\([^)]*\)")
 APOSTROPHES = "'’"
@@ -391,6 +395,11 @@ def verifier_preuve(corps: str) -> list[Resultat]:
         res.append(avertissement("DATATION_MIXTE",
                                  "Dates en « av. J.-C. » et en « BP / avant le présent » : vérifier la cohérence "
                                  "(environ 2 000 ans d'écart) et convertir explicitement."))
+    wiki = [n for n, texte in NOTE_COMPLETE_RE.findall(corps) if WIKIPEDIA_RE.search(texte)]
+    if wiki:
+        res.append(avertissement("NOTE_SOURCE_WIKIPEDIA",
+                                 f"Note(s) fondée(s) sur Wikipédia (source de niveau 7, piste et non preuve) : "
+                                 f"{', '.join(f'[^{n}]' for n in wiki)}. Remonter à la source citée par la page."))
     biblio = "".join(contenu for _, titre, contenu in sections(corps) if titre.lower().startswith("bibliograph"))
     suspectes = [l.strip()[:70] for l in biblio.splitlines() if BIBLIO_SUSPECTE_RE.search(l)]
     if suspectes:

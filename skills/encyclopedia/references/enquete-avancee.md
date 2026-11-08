@@ -49,7 +49,8 @@ python <dossier-du-skill>/scripts/verifier_references.py <dossier_articles>/<cat
 
 Le script interroge Crossref, OpenAlex et Open Library. Lecture des statuts :
 - **TROUVÉ** : la référence existe ; ajouter le DOI proposé s'il manquait.
-- **À CONFIRMER** : résultat proche ou livre absent d'Open Library ; vérifier dans un catalogue (BnF, KBR, WorldCat).
+- **À CONFIRMER** : résultat proche, livre absent d'Open Library, ou titre concordant mais auteurs différents (ou titre trop court pour conclure) ; vérifier dans un catalogue (BnF, KBR, WorldCat).
+- **HORS BASES** : texte officiel (loi, décret, résolution) ou fiche de base de référence (Ethnologue, Glottolog, Wikipédia) sans lien ; le vérifier à la source (journal officiel, site de la base). Avec un lien, la page est consultée.
 - **DIVERGENT** : le DOI pointe vers une autre publication ; corriger le DOI ou la référence.
 - **INTROUVABLE** : aucune trace ; retrouver la référence exacte à la main ou la retirer. Une référence introuvable n'est jamais conservée « en attendant ».
 - **ERREUR RÉSEAU** : rien n'est conclu ; relancer plus tard.

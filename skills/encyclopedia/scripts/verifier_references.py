@@ -13,8 +13,14 @@ Pour chaque entrée de la section « ## Bibliographie » :
     (titre présent : TROUVÉ ; PDF, titre absent ou lien injoignable : À CONFIRMER ; lien mort : INTROUVABLE).
 Signale aussi une copie en accès libre du texte intégral quand OpenAlex en connaît une.
 
-Statuts : TROUVÉ · À CONFIRMER · DIVERGENT (le DOI pointe vers autre chose) ·
-INTROUVABLE (à retrouver à la main ou à retirer) · ERREUR RÉSEAU (rien n'est conclu).
+Les textes officiels (lois, décrets, constitutions, résolutions) et les fiches de bases de référence
+(Ethnologue, Glottolog, Wikipédia…) ne sont pas cherchés dans les bases bibliographiques, où ils
+produiraient de faux rapprochements : leur page est consultée s'ils ont un lien, sinon ils sont HORS BASES.
+Une page web citée avec son lien est consultée avant toute recherche par titre. Un résultat de recherche
+dont les auteurs ne correspondent pas, ou un titre très court sans auteur concordant, reste À CONFIRMER.
+
+Statuts : TROUVÉ · À CONFIRMER · HORS BASES (à vérifier à la source) · DIVERGENT (le DOI pointe vers
+autre chose) · INTROUVABLE (à retrouver à la main ou à retirer) · ERREUR RÉSEAU (rien n'est conclu).
 
 Codes de sortie : 0 tout est trouvé ou à confirmer ; 1 au moins une entrée DIVERGENT ou
 INTROUVABLE ; 2 vérification impossible (fichier illisible, aucune bibliographie).
@@ -29,6 +35,7 @@ import json
 import re
 import ssl
 import sys
+import time
 import unicodedata
 import urllib.error
 import urllib.parse
@@ -39,10 +46,13 @@ from html import unescape
 from pathlib import Path
 
 TROUVE, A_CONFIRMER, DIVERGENT = "TROUVÉ", "À CONFIRMER", "DIVERGENT"
-INTROUVABLE, ERREUR_RESEAU = "INTROUVABLE", "ERREUR RÉSEAU"
+INTROUVABLE, ERREUR_RESEAU, HORS_BASES = "INTROUVABLE", "ERREUR RÉSEAU", "HORS BASES"
 SEUIL_TROUVE, SEUIL_PROCHE = 0.85, 0.6
 USER_AGENT = "redactor-verifier/1.0 (verification bibliographique; https://github.com/imbrick/redactor)"
 DELAI_RESEAU_S = 20
+ESSAIS_SI_SATURE = 3          # HTTP 429 ou 503 : nouvel essai après une pause
+PAUSE_MAX_S = 10
+MOTS_TITRE_COURT = 3          # en deçà, un titre seul ne suffit pas à identifier une publication
 
 BIBLIO_RE = re.compile(
     r"^## +(?:[IVXLC\d]+\.\s*)?(?:bibliograph\w*|r[ée]f[ée]rences(?: bibliographiques)?|sources(?: et r[ée]f[ée]rences)?)\b.*$",
@@ -54,6 +64,15 @@ ITALIQUE_RE = re.compile(r"(?<!\*)\*([^*]+)\*(?!\*)|(?<![\w*])_([^_]+)_(?!\w)")
 # Indices qu'un titre en italique est celui d'un article de revue, non d'un livre.
 REVUE_RE = re.compile(r"\d+\s*\(\d[\d–-]*\)|vol\.|p\.\s*\d+\s*[–-]|journal|letters|review|proceedings|"
                       r"bulletin|comptes rendus|nature|science|geology|geosystems|publications", re.IGNORECASE)
+# Textes officiels et fiches de bases de référence : absents de Crossref et d'Open Library.
+OFFICIEL_RE = re.compile(r"\b(?:loi|loi-cadre|décret|decret|ordonnance|arrêté|arrete)\s+(?:organique\s+)?"
+                         r"(?:n[°o]|du\s+\d)"
+                         r"|journal officiel|moniteur belge|légifrance|legifrance|\bA/RES/|\brésolution\s+\d"
+                         r"|assemblée générale des nations|constitution de la république",
+                         re.IGNORECASE)
+BASE_RE = re.compile(r"ethnologue|glottolog|joshua project|wikidata|wikip[ée]dia|\bsil international",
+                     re.IGNORECASE)
+COMPTE_RENDU_RE = re.compile(r"compte[- ]rendu|recension|review of|book review", re.IGNORECASE)
 ANNEE_RE = re.compile(r"\b(1[5-9]\d{2}|20\d{2})\b")
 ARXIV_RE = re.compile(r"arxiv(?:\.org/abs/|:)\s*(\d{4}\.\d{4,5}(?:v\d+)?|[a-z.-]+/\d{7})", re.IGNORECASE)
 URL_RE = re.compile(r"https?://[^\s<>»)\]]+")
@@ -76,6 +95,7 @@ class Reference:
     est_livre: bool
     arxiv: str | None = None
     url: str | None = None
+    nature: str | None = None   # "officiel", "base" ou None (publication ordinaire)
 
 
 @dataclass(frozen=True)
@@ -106,7 +126,8 @@ def analyser_entree(ligne: str) -> Reference:
     titre_m = guillemets or italique
     titre = next(g for g in titre_m.groups() if g).strip().rstrip(".") if titre_m else ""
     apres_titre = ligne[titre_m.end():] if titre_m else ""
-    est_livre = guillemets is None and italique is not None and not REVUE_RE.search(apres_titre)
+    est_livre = (guillemets is None and italique is not None and not REVUE_RE.search(apres_titre)
+                 and not COMPTE_RENDU_RE.search(ligne))
     arxiv_m = ARXIV_RE.search(ligne)
     urls = [u.rstrip(".,;") for u in URL_RE.findall(ligne) if "doi.org/" not in u]
     hors_titre = ligne.replace(titre, " ") if titre else ligne
@@ -115,7 +136,17 @@ def analyser_entree(ligne: str) -> Reference:
     auteur = re.split(r"[,(]", ligne.replace("*", ""), maxsplit=1)[0].strip()
     return Reference(ligne.strip(), auteur, titre, int(annee_m.group(1)) if annee_m else None,
                      doi, est_livre=est_livre,
-                     arxiv=arxiv_m.group(1) if arxiv_m else None, url=urls[0] if urls else None)
+                     arxiv=arxiv_m.group(1) if arxiv_m else None, url=urls[0] if urls else None,
+                     nature=nature_ressource(ligne))
+
+
+def nature_ressource(ligne: str) -> str | None:
+    """« base » pour une fiche de base de référence, « officiel » pour un texte officiel, sinon None."""
+    if BASE_RE.search(ligne):
+        return "base"
+    if OFFICIEL_RE.search(ligne) and not DOI_RE.search(ligne):
+        return "officiel"
+    return None
 
 
 def extraire_references(texte: str) -> list[Reference]:
@@ -162,15 +193,27 @@ def contexte_ssl() -> ssl.SSLContext:
 CONTEXTE_SSL = contexte_ssl()
 
 
-def lire_json(url: str) -> dict:
+def pause_demandee(err: urllib.error.HTTPError, essai: int) -> float:
+    """Attente avant un nouvel essai : en-tête Retry-After s'il est numérique, sinon 1, 2, 4 s."""
+    entete = (err.headers.get("Retry-After") or "") if err.headers else ""
+    attente = float(entete) if entete.strip().isdigit() else 2 ** essai
+    return min(attente, PAUSE_MAX_S)
+
+
+def lire_json(url: str, dormir=time.sleep) -> dict:
     requete = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(requete, timeout=DELAI_RESEAU_S, context=CONTEXTE_SSL) as reponse:
-            return json.loads(reponse.read().decode("utf-8"))
-    except urllib.error.HTTPError as err:
-        if err.code == 404:
-            raise NonTrouve(url) from err
-        raise OSError(f"HTTP {err.code} pour {url}") from err
+    for essai in range(ESSAIS_SI_SATURE):
+        try:
+            with urllib.request.urlopen(requete, timeout=DELAI_RESEAU_S, context=CONTEXTE_SSL) as reponse:
+                return json.loads(reponse.read().decode("utf-8"))
+        except urllib.error.HTTPError as err:
+            if err.code == 404:
+                raise NonTrouve(url) from err
+            if err.code in (429, 503) and essai < ESSAIS_SI_SATURE - 1:
+                dormir(pause_demandee(err, essai))
+                continue
+            raise OSError(f"HTTP {err.code} pour {url}") from err
+    raise OSError(f"Service saturé pour {url}")
 
 
 def lire_page(url: str) -> tuple[str, str]:
@@ -198,17 +241,43 @@ def annee_crossref(item: dict) -> int | None:
     return parties[0][0] if parties and parties[0] else None
 
 
-def candidats_crossref(ref: Reference, fetch) -> list[tuple[str, int | None, str | None]]:
+@dataclass(frozen=True)
+class Candidat:
+    titre: str
+    annee: int | None
+    doi: str | None
+    auteurs: str = ""   # noms des auteurs, normalisés ; vide si la base n'en donne pas
+
+
+def candidats_crossref(ref: Reference, fetch) -> list[Candidat]:
     requete = " ".join(filter(None, [ref.titre, ref.auteur, str(ref.annee or "")]))
     donnees = fetch(f"https://api.crossref.org/works?rows=5&query.bibliographic={q(requete)}")
-    return [((item.get("title") or [""])[0], annee_crossref(item), item.get("DOI"))
+    return [Candidat((item.get("title") or [""])[0], annee_crossref(item), item.get("DOI"),
+                     normaliser(" ".join(f"{a.get('family', '')} {a.get('name', '')}" for a in item.get("author", []))))
             for item in donnees.get("message", {}).get("items", [])]
 
 
-def candidats_openalex(ref: Reference, fetch) -> list[tuple[str, int | None, str | None]]:
+def candidats_openalex(ref: Reference, fetch) -> list[Candidat]:
     donnees = fetch(f"https://api.openalex.org/works?per-page=5&search={q(ref.titre)}")
-    return [(w.get("title") or "", w.get("publication_year"), (w.get("doi") or "").replace("https://doi.org/", "") or None)
+    return [Candidat(w.get("title") or "", w.get("publication_year"),
+                     (w.get("doi") or "").replace("https://doi.org/", "") or None,
+                     normaliser(" ".join((a.get("author") or {}).get("display_name", "")
+                                         for a in w.get("authorships", []))))
             for w in donnees.get("results", [])]
+
+
+def nom_principal(auteur: str) -> str:
+    """Premier mot significatif du champ auteur (nom de famille, ou premier mot d'un auteur collectif)."""
+    mots = [m for m in normaliser(auteur).split() if len(m) > 2]
+    return mots[0] if mots else ""
+
+
+def auteur_concorde(ref: Reference, candidat: Candidat) -> bool | None:
+    """True ou False si la comparaison est possible, None si l'une des deux parts n'a pas d'auteur."""
+    nom = nom_principal(ref.auteur)
+    if not nom or not candidat.auteurs:
+        return None
+    return nom in candidat.auteurs.split()
 
 
 def acces_libre(doi: str | None, fetch) -> str | None:
@@ -246,12 +315,20 @@ def verifier_par_recherche(ref: Reference, fetch) -> Verdict:
             erreurs += 1
     if erreurs == 2:
         return Verdict(ref, ERREUR_RESEAU, "Crossref et OpenAlex injoignables.")
-    compatibles = [c for c in candidats if annee_compatible(ref.annee, c[1])]
+    compatibles = [c for c in candidats if annee_compatible(ref.annee, c.annee)]
     if not compatibles:
         return Verdict(ref, INTROUVABLE, "Aucune publication de ce titre et de cette année dans Crossref ni OpenAlex.")
-    titre, annee, doi = max(compatibles, key=lambda c: similarite(ref.titre, c[0]))
-    score = similarite(ref.titre, titre)
+    meilleur = max(compatibles, key=lambda c: (similarite(ref.titre, c.titre), auteur_concorde(ref, c) is True))
+    score = similarite(ref.titre, meilleur.titre)
+    titre, annee, doi = meilleur.titre, meilleur.annee, meilleur.doi
     if score >= SEUIL_TROUVE:
+        concorde = auteur_concorde(ref, meilleur)
+        if concorde is False:
+            return Verdict(ref, A_CONFIRMER, f"Titre concordant mais auteurs différents : « {titre} » ({annee}), "
+                                             f"DOI {doi}. Probablement une autre publication.")
+        if concorde is None and len(normaliser(ref.titre).split()) <= MOTS_TITRE_COURT:
+            return Verdict(ref, A_CONFIRMER, f"Titre trop court pour conclure sans auteur concordant : "
+                                             f"« {titre} » ({annee}), DOI {doi}.")
         return Verdict(ref, TROUVE, f"« {titre} » ({annee}).", doi, acces_libre(doi, fetch))
     if score >= SEUIL_PROCHE:
         return Verdict(ref, A_CONFIRMER, f"Titre le plus proche : « {titre} » ({annee}), DOI {doi}.", doi)
@@ -312,9 +389,9 @@ def texte_visible(html: str) -> str:
     return unescape(re.sub(r"<[^>]+>", " ", sans_scripts))
 
 
-def verifier_par_url(ref: Reference, fetch_page) -> Verdict:
-    """Dernier recours quand les bases bibliographiques ne connaissent pas la référence."""
-    absent = "Absent de Crossref et d'OpenAlex"
+def verifier_par_url(ref: Reference, fetch_page, absent: str = "Absent de Crossref et d'OpenAlex") -> Verdict:
+    """Consulte la page citée : d'abord pour les pages web et les textes officiels,
+    en dernier recours pour les autres références que les bases ne connaissent pas."""
     try:
         type_contenu, texte = fetch_page(ref.url)
     except NonTrouve:
@@ -329,6 +406,14 @@ def verifier_par_url(ref: Reference, fetch_page) -> Verdict:
     return Verdict(ref, A_CONFIRMER, f"{absent} ; page accessible mais le titre n'y figure pas ({ref.url}).")
 
 
+def verifier_hors_bases(ref: Reference, fetch_page) -> Verdict:
+    genre = "Fiche de base de référence" if ref.nature == "base" else "Texte officiel"
+    if ref.url:
+        return verifier_par_url(ref, fetch_page, absent=f"{genre}, absent des bases bibliographiques")
+    return Verdict(ref, HORS_BASES, f"{genre} : hors Crossref et Open Library, à vérifier à la source "
+                                    "(journal officiel, site de la base).")
+
+
 def verifier_reference(ref: Reference, fetch=lire_json, fetch_page=lire_page) -> Verdict:
     if not ref.titre:
         return Verdict(ref, A_CONFIRMER, "Titre non repéré (ni « guillemets » ni *italique* ni _italique_) : vérifier à la main.")
@@ -336,6 +421,12 @@ def verifier_reference(ref: Reference, fetch=lire_json, fetch_page=lire_page) ->
         return verifier_arxiv(ref, fetch_page)
     if ref.doi:
         return verifier_par_doi(ref, fetch)
+    if ref.nature:
+        return verifier_hors_bases(ref, fetch_page)
+    if ref.url and not ref.est_livre:
+        verdict = verifier_par_url(ref, fetch_page, absent="Page consultée")
+        if verdict.statut == TROUVE:
+            return verdict
     if ref.est_livre:
         return verifier_livre(ref, fetch)
     verdict = verifier_par_recherche(ref, fetch)
@@ -354,7 +445,8 @@ def afficher(verdicts: list[Verdict]) -> None:
             print(f"    DOI trouvé : {v.doi}")
         if v.acces_libre:
             print(f"    Texte intégral en accès libre : {v.acces_libre}")
-    bilan = {s: sum(v.statut == s for v in verdicts) for s in (TROUVE, A_CONFIRMER, DIVERGENT, INTROUVABLE, ERREUR_RESEAU)}
+    bilan = {s: sum(v.statut == s for v in verdicts) for s in (TROUVE, A_CONFIRMER, HORS_BASES, DIVERGENT,
+                                                          INTROUVABLE, ERREUR_RESEAU)}
     print("\n== Bilan : " + " · ".join(f"{n} {s}" for s, n in bilan.items() if n))
 
 

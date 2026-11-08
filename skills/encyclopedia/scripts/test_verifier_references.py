@@ -249,6 +249,116 @@ class TestReferencesEnLigne(unittest.TestCase):
         self.assertIn("certificat invalide", verdict.detail)
 
 
+ARTICLE_HORS_BASES = textwrap.dedent('''\
+    ## Bibliographie
+
+    - SIL International / Ethnologue, *Tshiluba (Luba-Kasai)*, 26e éd., Dallas, 2023.
+    - Loi n° 2020-1673 du 24 décembre 2020 relative à la restitution de biens culturels, *Journal officiel*, 26 décembre 2020.
+    - Assemblée générale des Nations unies, « Restitution des œuvres d'art aux pays victimes d'expropriation », résolution 3187 (XXVIII), 1973. URL : https://digitallibrary.un.org/record/190996.
+    - Rauff, James V., compte rendu de *African Fractals* de Ron Eglash, *American Mathematical Monthly*, 2001.
+    - Dupont, Jean, *La résolution des conflits fonciers au Kivu*, Goma, 2010.
+    - International Lake Environment Committee, « Lake Edward », *World Lake Database*. URL : https://wldb.ilec.or.jp/Display/html/3593.
+    - Human Rights Watch, « Opération Likofi », 2014.
+    ''')
+
+
+class TestHorsBases(unittest.TestCase):
+    def setUp(self):
+        (self.ethnologue, self.loi, self.resolution, self.compte_rendu,
+         self.livre, self.ilec, self.hrw) = vr.extraire_references(ARTICLE_HORS_BASES)
+
+    def test_nature_des_ressources(self):
+        self.assertEqual(self.ethnologue.nature, "base")
+        self.assertEqual(self.loi.nature, "officiel")
+        self.assertEqual(self.resolution.nature, "officiel")
+        self.assertIsNone(self.livre.nature, "un titre contenant « résolution » n'est pas un texte officiel")
+
+    def test_fiche_de_base_sans_lien_nest_pas_cherchee_dans_open_library(self):
+        reseau = FauxReseau({})
+        verdict = vr.verifier_reference(self.ethnologue, reseau)
+        self.assertEqual(verdict.statut, vr.HORS_BASES)
+        self.assertEqual(reseau.appels, [])
+
+    def test_texte_officiel_sans_lien_est_hors_bases(self):
+        self.assertEqual(vr.verifier_reference(self.loi, FauxReseau({})).statut, vr.HORS_BASES)
+
+    def test_texte_officiel_avec_lien_consulte_la_page(self):
+        pages = FauxReseau({"digitallibrary.un.org": ("text/html", "<h1>Restitution des œuvres d'art aux pays "
+                                                                   "victimes d'expropriation</h1>")})
+        self.assertEqual(vr.verifier_reference(self.resolution, FauxReseau({}), pages).statut, vr.TROUVE)
+
+    def test_compte_rendu_nest_pas_un_livre(self):
+        self.assertFalse(self.compte_rendu.est_livre)
+
+    def test_page_web_consultee_avant_la_recherche_par_titre(self):
+        reseau = FauxReseau({"api.crossref.org/works?": crossref_recherche(("Lake, Edward (1641–1704)", None, "10.1/odnb"))})
+        pages = FauxReseau({"wldb.ilec.or.jp": ("text/html", "<h1>Lake Edward</h1>")})
+        verdict = vr.verifier_reference(self.ilec, reseau, pages)
+        self.assertEqual(verdict.statut, vr.TROUVE)
+        self.assertEqual(reseau.appels, [])
+
+    def test_titre_court_sans_auteur_concordant_reste_a_confirmer(self):
+        ref = vr.Reference("x", "Institut royal", "Ishango", 2018, None, est_livre=False)
+        reseau = FauxReseau({"api.crossref.org/works?": crossref_recherche(("Ishango", 2018, "10.1007/chapitre")),
+                             "api.openalex.org/works?": {"results": []}})
+        self.assertEqual(vr.verifier_reference(ref, reseau).statut, vr.A_CONFIRMER)
+
+    def test_titre_identique_dun_autre_auteur_reste_a_confirmer(self):
+        reseau = FauxReseau({
+            "api.crossref.org/works?": {"message": {"items": [
+                {"title": ["Opération Likofi"], "issued": {"date-parts": [[2014]]}, "DOI": "10.1007/autre",
+                 "author": [{"family": "Martin", "given": "Paul"}]}]}},
+            "api.openalex.org/works?": {"results": []},
+        })
+        verdict = vr.verifier_reference(self.hrw, reseau)
+        self.assertEqual(verdict.statut, vr.A_CONFIRMER)
+        self.assertIn("auteurs différents", verdict.detail)
+
+    def test_auteur_concordant_confirme_le_resultat(self):
+        ref = vr.Reference("x", "De Boeck, Filip", "Inhabiting ocular ground", 2011, None, est_livre=False)
+        reseau = FauxReseau({
+            "api.crossref.org/works?": {"message": {"items": [
+                {"title": ["Inhabiting ocular ground"], "issued": {"date-parts": [[2011]]}, "DOI": "10.1/x",
+                 "author": [{"family": "De Boeck", "given": "Filip"}]}]}},
+            "api.openalex.org/works": {"results": [], "open_access": {"oa_url": None}},
+        })
+        self.assertEqual(vr.verifier_reference(ref, reseau).statut, vr.TROUVE)
+
+
+class ReponseHTTP:
+    def __init__(self, corps):
+        self.corps = corps
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def read(self):
+        return self.corps
+
+
+class TestServiceSature(unittest.TestCase):
+    def test_nouvel_essai_apres_http_429(self):
+        import urllib.error
+        from unittest import mock
+        erreur = urllib.error.HTTPError("https://api.crossref.org", 429, "Too Many Requests",
+                                        {"Retry-After": "2"}, None)
+        pauses = []
+        with mock.patch.object(vr.urllib.request, "urlopen", side_effect=[erreur, ReponseHTTP(b'{"ok": 1}')]):
+            self.assertEqual(vr.lire_json("https://api.crossref.org/works?x", dormir=pauses.append), {"ok": 1})
+        self.assertEqual(pauses, [2.0])
+
+    def test_saturation_persistante_est_une_erreur_reseau(self):
+        import urllib.error
+        from unittest import mock
+        erreurs = [urllib.error.HTTPError("u", 429, "Too Many Requests", {}, None) for _ in range(vr.ESSAIS_SI_SATURE)]
+        with mock.patch.object(vr.urllib.request, "urlopen", side_effect=erreurs):
+            with self.assertRaises(OSError):
+                vr.lire_json("https://api.crossref.org/works?x", dormir=lambda s: None)
+
+
 class TestSimilarite(unittest.TestCase):
     def test_accents_casse_et_ponctuation_ignores(self):
         self.assertGreater(vr.similarite("L'Éruption du Niragongo.", "l eruption du niragongo"), 0.95)
