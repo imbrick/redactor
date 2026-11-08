@@ -1,0 +1,15 @@
+{
+  "projet": "Le Courrier de Belcourt",
+  "charte": "docs/charte-redaction.md",
+  "presse": {
+    "dossier_papiers": "papiers",
+    "dossier_verification": "verification",
+    "rubriques": ["Politique", "Économie", "Société", "Culture", "Sport", "Opinions"],
+    "reseaux": ["x", "facebook", "linkedin", "newsletter"],
+    "signature": "La rédaction",
+    "longueurs": {
+      "actualite": [300, 800],
+      "breve": [40, 150]
+    }
+  }
+}

@@ -5,11 +5,10 @@ Plugin [Claude Code](https://claude.com/claude-code) d'écriture de contenu, de 
 | Skill | Genre | État |
 |---|---|---|
 | `redactor:encyclopedia` | articles encyclopédiques et wikis | disponible |
+| `redactor:presse` | presse quotidienne et magazine | disponible |
 | `redactor:roman` | romans | prévu |
 | `redactor:nouvelle` | nouvelles | prévu |
 | `redactor:manga` | manga | prévu |
-| `redactor:journal` | presse quotidienne | prévu |
-| `redactor:magazine` | magazine | prévu |
 
 ## Installation
 
@@ -72,6 +71,47 @@ Le skill ne connaît aucun projet en particulier. Chaque projet décrit ses conv
 
 Exemple complet : [`exemples/redactor.json`](exemples/redactor.json). [Kongopedia](https://github.com/imbrick/kongopedia), l'encyclopédie francophone pour laquelle le skill a été écrit, en a un à la racine de son dépôt.
 
+## `redactor:presse`
+
+Le skill organise le travail d'un journaliste en six phases. Trois d'entre elles s'arrêtent sur ta validation : l'angle, le plan et la livraison.
+
+1. angle (sujet, angle, format, longueur, risques) ;
+2. enquête (documents, entretiens, terrain, dossier de vérification tenu au fil de l'eau) ;
+3. plan (attaque et intertitres) ;
+4. rédaction (corps, titraille complète) ;
+5. vérification (règle des deux sources, niveaux de preuve P0 à P4, contradictoire, relecture adversariale, script) ;
+6. livraison au CMS (titraille, corps, champs SEO, messages pour X, Facebook, LinkedIn et la newsletter).
+
+Il couvre les brèves et l'actualité, l'enquête, le reportage, le portrait, l'entretien, l'analyse et l'opinion (éditorial, tribune, chronique). Sa déontologie part de la charte de Munich, que chaque titre complète par sa propre charte.
+
+Chaque papier a un **dossier de vérification**, un document interne jamais publié. Pour chaque fait, il donne les sources, la sensibilité et le niveau de preuve. Il note aussi le statut de chaque citation (on, off, relue), les sources anonymes et la date à laquelle chaque mis en cause a été sollicité.
+
+`verifier_papier.py` contrôle le papier et son dossier avant livraison. Il bloque dans ces cas :
+- une citation du texte absente du dossier ;
+- un propos « off » publié ;
+- un fait en P0 ;
+- un fait sensible à source unique non attribué ;
+- un mis en cause non sollicité ;
+- une exergue qui n'est pas dans le texte.
+
+Il avertit aussi sur les longueurs (corps, chapô, titre et champs SEO), les dates relatives et les crédits photo manquants. `verifier_references.py`, le script du skill encyclopedia, vérifie les rapports et études cités au dossier.
+
+On l'appelle en langage naturel (« trouve un angle sur la grève au port », « prépare l'interview du maire », « vérifie ce papier ») ou avec `/redactor:presse`.
+
+### Configurer un titre : section `presse` de `redactor.json`
+
+| Clé | Rôle | Défaut |
+|---|---|---|
+| `charte` | charte de la rédaction (prime sur la `charte` commune) | charte commune, sinon aucune |
+| `dossier_papiers` | dossier des papiers | `papiers` |
+| `dossier_verification` | dossier des dossiers de vérification | `verification` |
+| `rubriques` | rubriques admises | libre |
+| `reseaux` | messages à produire | `["x", "facebook", "linkedin", "newsletter"]` |
+| `signature` | signature par défaut | aucune |
+| `longueurs` | fourchettes de mots par format, `{ "actualite": [300, 800] }` | voir `skills/presse/references/formats.md` |
+
+Exemple complet, avec un papier fictif et son dossier de vérification : [`exemples/presse/`](exemples/presse/). Un même `redactor.json` peut décrire un projet encyclopédique et un titre de presse : le skill encyclopedia ignore la section `presse`.
+
 ## Développement
 
 Tester le plugin en local sans le publier :
@@ -81,11 +121,11 @@ Tester le plugin en local sans le publier :
 /plugin install redactor@redactor
 ```
 
-Lancer les tests :
+Lancer les tests, skill par skill :
 
 ```bash
-cd skills/encyclopedia/scripts
-python -m unittest discover
+(cd skills/encyclopedia/scripts && python -m unittest discover)
+(cd skills/presse/scripts && python -m unittest discover)
 ```
 
 ## Licence

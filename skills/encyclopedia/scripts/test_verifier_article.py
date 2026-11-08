@@ -412,6 +412,10 @@ class TestConfiguration(DepotTemporaire):
         with self.assertRaises(projet.ConfigInvalide):
             projet.depuis_dict({"dossier_article": "x"})
 
+    def test_section_d_un_autre_genre_ignoree(self):
+        cfg = projet.depuis_dict({"dossier_articles": "contenu", "presse": {"dossier_papiers": "papiers"}})
+        self.assertEqual(cfg.dossier_articles, "contenu")
+
     def test_configuration_invalide_code_2(self):
         self.ecrire(projet.NOM_FICHIER, "{ pas du json")
         projet._charger.cache_clear()

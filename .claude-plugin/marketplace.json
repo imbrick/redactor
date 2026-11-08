@@ -9,7 +9,7 @@
     {
       "name": "redactor",
       "source": "./",
-      "description": "Écriture de contenu de l'enquête à la publication : encyclopédie (disponible), roman, nouvelle, manga, journal, magazine (prévus).",
+      "description": "Écriture de contenu de l'enquête à la publication : encyclopédie et presse (disponibles), roman, nouvelle, manga (prévus).",
       "category": "productivity"
     }
   ]

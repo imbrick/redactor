@@ -46,13 +46,15 @@ class Config:
 
 DEFAUT = Config()
 _TUPLES = {"fichiers_index", "champs_obligatoires", "champs_recommandes", "statuts"}
+# Sections propres aux autres skills du plugin (lues par leurs propres scripts).
+SECTIONS_GENRES = frozenset({"presse"})
 
 
 def depuis_dict(donnees: dict) -> Config:
     if not isinstance(donnees, dict):
         raise ConfigInvalide(f"{NOM_FICHIER} doit contenir un objet JSON.")
     connues = {f.name for f in fields(Config)}
-    inconnues = sorted(set(donnees) - connues - {"$schema", "description"})
+    inconnues = sorted(set(donnees) - connues - {"$schema", "description"} - SECTIONS_GENRES)
     if inconnues:
         raise ConfigInvalide(f"Clé(s) inconnue(s) dans {NOM_FICHIER} : {', '.join(inconnues)}.")
     valeurs = {}
@@ -75,8 +77,8 @@ def _charger(racine: Path) -> Config:
     if not fichier.exists():
         return DEFAUT
     try:
-        donnees = json.loads(fichier.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as err:
+        donnees = json.loads(fichier.read_text(encoding="utf-8-sig"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as err:
         raise ConfigInvalide(f"{fichier} illisible : {err}") from err
     return depuis_dict(donnees)
 
