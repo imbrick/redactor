@@ -1,7 +1,7 @@
 {
   "name": "redactor",
-  "description": "Écriture de contenu de l'enquête à la publication. Skill encyclopedia : méthode historique et scientifique, preuves, vérification des références, contrôle avant publication. Skill presse : angle, enquête, entretiens, terrain, règle des deux sources, déontologie, titraille, SEO, réseaux et dossier de vérification contrôlés avant livraison au CMS. Autres genres prévus : roman, nouvelle, manga.",
-  "version": "0.3.0",
+  "description": "Écriture de contenu de l'enquête à la publication. Skill encyclopedia : méthode historique et scientifique, preuves, vérification des références. Skill presse : angle, enquête, entretiens, deux sources, déontologie, titraille, SEO, réseaux, dossier de vérification. Skill roman : prémisse, personnages, jalons, chapitres, voix de l'auteur, bible, continuité, indices de polar, révision, manuscrit et dossier d'éditeur. Autres genres prévus : nouvelle, manga.",
+  "version": "0.4.0",
   "author": {
     "name": "Imbrick",
     "url": "https://github.com/imbrick"
@@ -14,6 +14,8 @@
     "encyclopedia",
     "journalism",
     "press",
+    "novel",
+    "fiction",
     "fact-check",
     "french",
     "rédaction"

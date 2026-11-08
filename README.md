@@ -6,7 +6,7 @@ Plugin [Claude Code](https://claude.com/claude-code) d'écriture de contenu, de 
 |---|---|---|
 | `redactor:encyclopedia` | articles encyclopédiques et wikis | disponible |
 | `redactor:presse` | presse quotidienne et magazine | disponible |
-| `redactor:roman` | romans | prévu |
+| `redactor:roman` | romans | disponible |
 | `redactor:nouvelle` | nouvelles | prévu |
 | `redactor:manga` | manga | prévu |
 
@@ -73,7 +73,7 @@ Exemple complet : [`exemples/redactor.json`](exemples/redactor.json).
 
 ## `redactor:presse`
 
-Le skill organise le travail d'un journaliste en six phases. Trois d'entre elles s'arrêtent sur ta validation : l'angle, le plan et la livraison.
+Le skill organise le travail d'un journaliste en six phases. Trois d'entre elles attendent la validation de l'utilisateur : l'angle, le plan et la livraison.
 
 1. angle (sujet, angle, format, longueur, risques) ;
 2. enquête (documents, entretiens, terrain, dossier de vérification tenu au fil de l'eau) ;
@@ -110,7 +110,50 @@ On l'appelle en langage naturel (« trouve un angle sur la grève au port », «
 | `signature` | signature par défaut | aucune |
 | `longueurs` | fourchettes de mots par format, `{ "actualite": [300, 800] }` | voir `skills/presse/references/formats.md` |
 
-Exemple complet, avec un papier fictif et son dossier de vérification : [`exemples/presse/`](exemples/presse/). Un même `redactor.json` peut décrire un projet encyclopédique et un titre de presse : le skill encyclopedia ignore la section `presse`.
+Exemple complet, avec un papier fictif et son dossier de vérification : [`exemples/presse/`](exemples/presse/). Un même `redactor.json` peut porter plusieurs sections : chaque skill lit la sienne et ignore celles des autres.
+
+## `redactor:roman`
+
+Le skill accompagne l'écriture d'un roman avec la méthode de l'entre-deux. On fixe quelques jalons (le début, les grands tournants, la fin visée), et le reste se découvre en écrivant. Le travail suit six phases ; quatre d'entre elles attendent la validation de l'auteur :
+
+1. prémisse, personnages et fiche de voix *(validation)* ;
+2. monde et bible : personnages, lieux, chronologie, indices du polar, règles d'un monde imaginaire, sources d'un roman historique ;
+3. jalons et plan *(validation)* ;
+4. écriture, chapitre par chapitre *(validation à chaque chapitre)*. Pour chaque chapitre, l'auteur choisit : Claude le rédige dans sa voix, ou l'auteur l'écrit et Claude le relit ;
+5. révision d'ensemble en cinq passes, avec un rapport de révision *(validation)* ;
+6. manuscrit assemblé, export .docx ou PDF, dossier d'éditeur (pitch, résumé, synopsis, quatrième de couverture).
+
+Il sert la littérature générale, le polar et le thriller, l'imaginaire et le roman historique.
+
+Deux scripts l'accompagnent :
+
+- `verifier_roman.py` contrôle quatre choses :
+  - l'avancement : mots par chapitre, total par rapport à l'objectif, chapitres à écrire ;
+  - la continuité : noms absents de la bible ou mal orthographiés, point de vue d'un personnage pas encore né ou déjà mort ;
+  - le style : répétitions rapprochées, adverbes en -ment, tics déclarés, dialogues au trait d'union ;
+  - pour le polar, les indices : indice jamais exploité, révélation non préparée ou préparée trop tard.
+- `assembler_manuscrit.py` assemble les chapitres dans l'ordre du plan, puis les exporte en .docx ou en PDF avec [pandoc](https://pandoc.org) s'il est installé.
+
+On l'appelle en langage naturel (« aide-moi à construire mon roman », « écris le chapitre 3 », « vérifie la continuité ») ou avec `/redactor:roman`.
+
+### Configurer un roman : section `roman` de `redactor.json`
+
+| Clé | Rôle | Défaut |
+|---|---|---|
+| `charte` | fiche de voix de l'auteur ou charte de collection | charte commune, sinon aucune |
+| `titre`, `auteur` | titre et auteur du manuscrit | nom du projet ; aucun |
+| `genre` | `litterature`, `polar`, `imaginaire` ou `historique` | `litterature` |
+| `dossier_chapitres` | un fichier Markdown par chapitre | `chapitres` |
+| `plan` | jalons et tableau des chapitres | `plan.md` |
+| `dossier_bible` | personnages, lieux, chronologie, indices | `bible` |
+| `dossier_manuscrit` | manuscrit assemblé et exports | `manuscrit` |
+| `objectif_mots` | longueur visée | aucun |
+| `tics` | mots ou tournures à surveiller | aucun |
+| `noms_ignores` | mots à majuscule à ne pas signaler comme absents de la bible | aucun |
+| `statuts` | étapes d'un chapitre ; la dernière vaut « fini » | `["plan", "brouillon", "relu", "final"]` |
+| `titre_chapitre` | titre des chapitres dans le manuscrit | `Chapitre {numero} — {titre}` |
+
+Exemple complet, avec un polar fictif (plan, bible, registre d'indices, deux chapitres, fiche de voix) : [`exemples/roman/`](exemples/roman/).
 
 ## Développement
 
@@ -126,6 +169,7 @@ Lancer les tests, skill par skill :
 ```bash
 (cd skills/encyclopedia/scripts && python -m unittest discover)
 (cd skills/presse/scripts && python -m unittest discover)
+(cd skills/roman/scripts && python -m unittest discover)
 ```
 
 ## Licence

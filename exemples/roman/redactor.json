@@ -1,0 +1,16 @@
+{
+  "projet": "La Nuit du quai nord",
+  "charte": "voix.md",
+  "roman": {
+    "titre": "La Nuit du quai nord",
+    "auteur": "A. Exemple",
+    "genre": "polar",
+    "dossier_chapitres": "chapitres",
+    "plan": "plan.md",
+    "dossier_bible": "bible",
+    "dossier_manuscrit": "manuscrit",
+    "objectif_mots": 70000,
+    "tics": ["soudain", "sembla"],
+    "titre_chapitre": "Chapitre {numero} — {titre}"
+  }
+}
