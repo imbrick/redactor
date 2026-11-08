@@ -8,7 +8,7 @@ Plugin [Claude Code](https://claude.com/claude-code) d'écriture de contenu, de 
 | `redactor:presse` | presse quotidienne et magazine | disponible |
 | `redactor:roman` | romans | disponible |
 | `redactor:nouvelle` | nouvelles, concours, recueils | disponible |
-| `redactor:manga` | manga | prévu |
+| `redactor:manga` | manga, one-shot, webtoon | disponible |
 
 ## Installation
 
@@ -202,6 +202,49 @@ On l'appelle en langage naturel (« écris une nouvelle sur… », « vérifie q
 
 Exemple complet, avec deux nouvelles, un recueil et le règlement d'un concours fictif : [`exemples/nouvelle/`](exemples/nouvelle/).
 
+## `redactor:manga`
+
+Le skill écrit le manga avant le dessin : l'histoire, le découpage en pages et en cases, les dialogues et le rythme de lecture. Il sert le scénariste qui livre un script à un dessinateur comme l'auteur complet qui veut un découpage écrit avant de crayonner. Il ne dessine pas.
+
+Six phases ; quatre d'entre elles attendent la validation de l'auteur :
+
+1. prémisse, personnages et format *(validation)* ;
+2. bible et univers ;
+3. plan *(validation)* ;
+4. script, chapitre par chapitre *(validation à chaque chapitre)* ;
+5. révision *(validation)* ;
+6. livraison : script assemblé, feuille de lettrage, dossier de présentation.
+
+Il couvre le one-shot, la série en chapitres et le webtoon vertical. Le sens de lecture (droite à gauche ou gauche à droite) se règle par projet. Il reprend du skill roman la prémisse, la structure, les genres, la bible et le contrôle des noms.
+
+Deux scripts l'accompagnent :
+
+- `verifier_manga.py` contrôle quatre choses :
+  - la mise en page : pages par rapport à la cible, numérotation, page sans case, cases par page ;
+  - les bulles : case sans description, trop de bulles par case, bulle trop longue ;
+  - le rythme : révélation sur la page découverte en tournant, double page bien placée, cliffhanger d'une série ;
+  - la continuité : locuteurs et noms vérifiés contre la bible.
+- `assembler_script.py` assemble le script complet pour le dessinateur et une feuille de lettrage (page, case, locuteur, texte), puis exporte en .docx ou en PDF avec pandoc.
+
+On l'appelle en langage naturel (« écris le script du chapitre 1 », « découpe cette scène en cases », « vérifie le rythme de mes pages ») ou avec `/redactor:manga`.
+
+### Configurer : section `manga` de `redactor.json`
+
+| Clé | Rôle | Défaut |
+|---|---|---|
+| `charte` | charte de série ou de collection | charte commune, sinon aucune |
+| `titre`, `auteur`, `dessinateur` | titre et crédits | nom du projet ; aucun |
+| `format` | `oneshot`, `serie` ou `webtoon` | `serie` |
+| `sens` | `rtl` (droite à gauche) ou `ltr` (gauche à droite) | `rtl` |
+| `pages_par_chapitre` | cible de pages ; un chapitre peut la préciser | aucune |
+| `page_revelation` | parité de la page découverte en tournant | `paire` |
+| `cases_max_par_page`, `bulles_max_par_case`, `mots_max_par_bulle` | seuils de lisibilité | `7`, `3`, `25` |
+| `dossier_chapitres`, `plan`, `dossier_bible`, `dossier_manuscrit` | organisation du projet | `chapitres`, `plan.md`, `bible`, `manuscrit` |
+| `noms_ignores` | mots à majuscule à ne pas signaler hors bible | aucun |
+| `statuts` | étapes d'un chapitre ; la dernière vaut « fini » | `["plan", "script", "name", "final"]` |
+
+Exemple complet, avec le premier chapitre d'une série fictive (six pages, double page, révélation, cliffhanger) : [`exemples/manga/`](exemples/manga/).
+
 ## Développement
 
 Tester le plugin en local sans le publier :
@@ -218,6 +261,7 @@ Lancer les tests, skill par skill :
 (cd skills/presse/scripts && python -m unittest discover)
 (cd skills/roman/scripts && python -m unittest discover)
 (cd skills/nouvelle/scripts && python -m unittest discover)
+(cd skills/manga/scripts && python -m unittest discover)
 ```
 
 ## Licence

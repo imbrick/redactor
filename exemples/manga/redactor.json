@@ -1,0 +1,15 @@
+{
+  "projet": "Les Gardiens du phare",
+  "manga": {
+    "titre": "Les Gardiens du phare",
+    "auteur": "A. Exemple",
+    "dessinateur": "B. Exemple",
+    "format": "serie",
+    "sens": "rtl",
+    "pages_par_chapitre": 6,
+    "page_revelation": "paire",
+    "cases_max_par_page": 7,
+    "bulles_max_par_case": 3,
+    "mots_max_par_bulle": 25
+  }
+}
