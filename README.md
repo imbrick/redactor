@@ -42,7 +42,7 @@ git clone https://github.com/imbrick/redactor.git ~/.claude/skills/redactor
 ## Tests
 
 ```bash
-python -m pytest scripts/
+python -m unittest discover -s scripts
 ```
 
 ## Licence
