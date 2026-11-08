@@ -108,6 +108,11 @@ class TestExtractionSouligne(unittest.TestCase):
     def test_ligne_de_separation_ignoree(self):
         self.assertNotIn("", [r.titre for r in self.refs])
 
+    def test_titres_de_section_variantes(self):
+        for titre in ("## Références", "## Sources et références", "## 20. Bibliographie", "## Bibliographie sélective"):
+            texte = ARTICLE_SOULIGNE.replace("## Références bibliographiques", titre)
+            self.assertEqual(len(vr.extraire_references(texte)), 3, titre)
+
     def test_doi_verifie_avant_la_piste_livre(self):
         ref = vr.Reference("x", "Bird", "An updated digital model of plate boundaries", 2003,
                            "10.1029/2001GC000252", est_livre=True)

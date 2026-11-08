@@ -44,7 +44,9 @@ SEUIL_TROUVE, SEUIL_PROCHE = 0.85, 0.6
 USER_AGENT = "redactor-verifier/1.0 (verification bibliographique; https://github.com/imbrick/redactor)"
 DELAI_RESEAU_S = 20
 
-BIBLIO_RE = re.compile(r"^## +(?:bibliographie|références bibliographiques|references)\b.*$", re.IGNORECASE | re.MULTILINE)
+BIBLIO_RE = re.compile(
+    r"^## +(?:[IVXLC\d]+\.\s*)?(?:bibliograph\w*|r[ée]f[ée]rences(?: bibliographiques)?|sources(?: et r[ée]f[ée]rences)?)\b.*$",
+    re.IGNORECASE | re.MULTILINE)
 ENTREE_RE = re.compile(r"^\s*(?:[-*]|\d+\.)\s+(.+)$")
 DOI_RE = re.compile(r"10\.\d{4,9}/[^\s,;)»]+")
 GUILLEMETS_RE = re.compile(r"«\s*(.+?)\s*»")
