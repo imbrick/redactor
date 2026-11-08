@@ -28,13 +28,13 @@ Une information passe souvent par plusieurs mains : donnée brute, rapport, dép
 
 | Domaine | Sources primaires à viser |
 |---|---|
-| Volcans, séismes | Global Volcanism Program (Smithsonian), rapports hebdomadaires GVP/USGS, bulletins de l'Observatoire volcanologique de Goma, catalogue sismique de l'USGS |
+| Volcans, séismes | Global Volcanism Program (Smithsonian), rapports hebdomadaires GVP/USGS, bulletins des observatoires volcanologiques nationaux, catalogue sismique de l'USGS |
 | Crises humanitaires | Rapports de situation OCHA et HCR sur ReliefWeb, communiqués datés des agences des Nations unies |
-| Démographie | Institut national de la statistique (INS-RDC), recensements, UN DESA *World Population Prospects* |
+| Démographie | institut national de statistique du pays, recensements, UN DESA *World Population Prospects* |
 | Eau, climat, agriculture | FAO AQUASTAT, Global Runoff Data Centre (GRDC), Banque mondiale |
 | Biodiversité | GBIF, Liste rouge de l'UICN |
 | Patrimoine | Centre du patrimoine mondial de l'UNESCO (fiches et décisions du Comité) |
-| Droit | Journaux officiels nationaux (par exemple Journal officiel de la RDC, Leganet.cd, Légifrance) |
+| Droit | Journaux officiels nationaux et bases législatives du pays concerné (par exemple Légifrance, Moniteur belge, Journal officiel de la RDC) |
 | Histoire coloniale | Archives des anciennes puissances coloniales (par exemple Archives africaines du SPF Affaires étrangères à Bruxelles, MRAC Tervuren, ANOM à Aix-en-Provence), presse ancienne numérisée (Gallica, BelgicaPress de la KBR) |
 | Langues et peuples | Glottolog, Ethnologue, recueils de traditions orales publiés |
 | Littérature scientifique | Crossref, OpenAlex, Persée, Cairn, HAL, AJOL |
@@ -83,7 +83,7 @@ Une source ancienne sur un phénomène mesurable (population, débit, gaz, super
 
 ## 7. Recherche multilingue et variantes de noms
 
-- Chercher en français, en anglais et, pour la période coloniale belge, en néerlandais ; en portugais ou en espagnol quand le sujet le demande.
+- Chercher en français, en anglais et, dans les langues des sources du sujet (langue de l'ancienne puissance coloniale, langues régionales, par exemple le néerlandais pour la période coloniale belge).
 - Chercher toutes les graphies : Nyiragongo et Niragongo, Nyamulagira et Nyamuragira, noms vernaculaires, anciens noms officiels. Les sources anciennes emploient souvent la graphie coloniale.
 - Chercher les noms des personnes sous leurs différentes transcriptions.
 
