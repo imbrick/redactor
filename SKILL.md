@@ -1,6 +1,6 @@
 ---
 name: kongopedia-redaction
-description: Chaîne complète de production d'un article Kongopedia, de l'enquête à la publication. Réunit la méthode historique (critique des sources, traditions orales, datation), la méthode scientifique (hiérarchie des preuves, mesures, hypothèses), le métier journalistique (attaque, pyramide inversée, attribution, vérification, équité) et la neutralité encyclopédique, puis contrôle l'article avec un script avant de le publier dans articles/. Use when the user asks to research, write, revise, fact-check or publish a Kongopedia article — « rédige un article Kongopedia sur… », « écris l'article », « fais la recherche pour Kongopedia », « vérifie / fact-check cet article », « révise l'article », « publie l'article », « contrôle le corpus ». Complète kongopedia-editorial-skill (charte maison), qu'il faut charger avec lui.
+description: Chaîne complète de production d'un article Kongopedia, de l'enquête à la publication. Réunit la méthode historique (critique des sources, traditions orales, datation), la méthode scientifique (hiérarchie des preuves, mesures, hypothèses), le métier journalistique (attaque, pyramide inversée, attribution, vérification, équité) et la neutralité encyclopédique, puis contrôle l'article avec un script avant de le publier dans articles/. Use when the user asks to research, write, revise, fact-check or publish a Kongopedia article — « rédige un article Kongopedia sur… », « écris l'article », « fais la recherche pour Kongopedia », « vérifie / fact-check cet article », « révise l'article », « publie l'article », « contrôle le corpus », « quel article écrire ensuite ? », « liste les sujets à rédiger ». Complète kongopedia-editorial-skill (charte maison), qu'il faut charger avec lui.
 ---
 
 # Kongopedia — Rédaction, de l'enquête à la publication
@@ -17,10 +17,12 @@ Ce que ce skill ajoute : **comment enquêter, comment écrire avec la clarté d'
 | `references/preuves-et-attribution.md` | dès la recherche (dossier de sources) et avant publication |
 | `references/enquete-avancee.md` | pour monter d'un niveau de preuve (P0 à P4) : sources primaires, texte intégral, page bloquée, contradictions ; toujours en révision |
 | `references/revision-enrichissement.md` | après un fact-check, et dès qu'il faut corriger, enrichir ou réécrire un article existant |
+| `references/sujets-derives.md` | pendant l'enquête et la rédaction pour repérer les sujets dérivés ; à la publication pour la fiche brainstorm ; pour choisir le prochain article |
 
 | Script | Rôle |
 |---|---|
 | `scripts/verifier_references.py` | vérifie dans Crossref, OpenAlex et Open Library que chaque référence existe, contrôle les prépublications arXiv et, en dernier recours, la page de l'URL indiquée ; propose les DOI manquants et les textes intégraux en accès libre. Un lien injoignable donne « À CONFIRMER », jamais « INTROUVABLE » |
+| `scripts/inventaire_sujets.py` | agrège toutes les fiches brainstorm, fusionne les doublons, signale les sujets déjà rédigés mais non cochés et classe ceux qui restent à rédiger |
 | `scripts/verifier_article.py` | contrôle la forme et la publication (frontmatter lu par le site, notes, index), ainsi que les signaux de preuve et de rédaction (chiffres sans note, affirmations trop fortes, datations mélangées, listes ou paragraphes fragmentés) |
 
 ## Les cinq phases
@@ -43,7 +45,8 @@ Chaque phase se termine par une **porte** : ne pas passer à la suivante tant qu
 3. Tenir le **dossier de sources** et la **table des affirmations** (`preuves-et-attribution.md`), avec le niveau de preuve atteint pour chaque affirmation.
 4. Noter les divergences entre sources et leur nature (erreur, tradition différente, datation variable).
 5. Pousser la preuve avec `enquete-avancee.md` : remonter aux sources primaires, passer du résumé au texte intégral, contourner légalement les pages bloquées, chercher en amont et en aval des citations, résoudre les contradictions.
-6. Dès qu'une bibliographie existe (en révision : immédiatement), lancer `verifier_references.py` et traiter chaque entrée DIVERGENT ou INTROUVABLE.
+6. Noter au fil de l'eau les sujets dérivés rencontrés dans les sources (`sujets-derives.md`, sections 1 à 3).
+7. Dès qu'une bibliographie existe (en révision : immédiatement), lancer `verifier_references.py` et traiter chaque entrée DIVERGENT ou INTROUVABLE.
 
 Si l'accès au web est indisponible, le dire et travailler seulement avec les sources fournies, en signalant chaque section insuffisamment sourcée.
 
@@ -77,7 +80,7 @@ Si l'accès au web est indisponible, le dire et travailler seulement avec les so
    ```
    Corriger tous les **BLOQUANT**, puis traiter les avertissements ou justifier ceux qu'on garde.
 3. Mettre à jour `articles/INDEX.md` (compteur et ligne de branche) et `articles/INDEX-ALPHABETIQUE.md` (ordre alphabétique strict), avec les chemins actuels `articles/…`, plus jamais `ressources/articles/…`.
-4. Créer `ressources/brainstorm/<slug>-articles-derives.md` (modèle dans `ressources/PROMPT-REDACTION-ARTICLE.md`) et cocher la colonne « Rédigé » dans la fiche de l'article-mère s'il s'agit d'un article dérivé.
+4. Créer `ressources/brainstorm/<slug>-articles-derives.md` (modèle dans `ressources/PROMPT-REDACTION-ARTICLE.md`) avec les sujets repérés, évalués et priorisés selon `sujets-derives.md` ; s'il s'agit d'un article dérivé, cocher `#` dans la colonne « Rédigé » de toutes les fiches qui le proposent (`inventaire_sujets.py` les retrouve).
 5. Ajouter une ligne à `ressources/log.md`.
 6. Relancer `verifier_article.py` jusqu'à zéro bloquant, et `verifier_references.py` jusqu'à zéro DIVERGENT ou INTROUVABLE. Ne pas faire de commit git sans demande explicite.
 
@@ -92,6 +95,7 @@ Contraintes du site que le script contrôle : `title`, `titre_simple` et `slug` 
 | Vérification / fact-check | 4 + `verifier_references.py` + `verifier_article.py`, sans réécrire | rapport : erreurs démontrées, affirmations P0, bibliographie, neutralité, corrections proposées |
 | Révision (après fact-check ou sur demande) | fact-check s'il n'existe pas, puis `revision-enrichissement.md` : corriger → retirer → restructurer → enrichir, puis 4 et 5 | article révisé et enrichi + journal des modifications + note éditoriale |
 | Contrôle du corpus | `verifier_article.py --corpus` | état des index, doublons, articles non conformes |
+| Plan éditorial (« quoi écrire ensuite ? ») | `inventaire_sujets.py` + `sujets-derives.md` | sujets prioritaires avec leurs articles-mères, incohérences des fiches, documentation disponible pour les trois premiers |
 
 ## Livraison
 
