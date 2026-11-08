@@ -17,6 +17,7 @@ Ce que ce skill ajoute : **comment enquêter, comment écrire avec la clarté d'
 | `references/preuves-et-attribution.md` | dès la recherche (dossier de sources) et avant publication |
 | `references/enquete-avancee.md` | pour monter d'un niveau de preuve (P0 à P4) : sources primaires, texte intégral, page bloquée, contradictions ; toujours en révision |
 | `references/revision-enrichissement.md` | après un fact-check, et dès qu'il faut corriger, enrichir ou réécrire un article existant |
+| `references/rapport-fact-check.md` | à chaque fact-check : modèle du rapport, archivage dans `ressources/fact-checks/`, statuts et suivi |
 | `references/sujets-derives.md` | pendant l'enquête et la rédaction pour repérer les sujets dérivés ; à la publication pour la fiche brainstorm ; pour choisir le prochain article |
 
 | Script | Rôle |
@@ -92,14 +93,14 @@ Contraintes du site que le script contrôle : `title`, `titre_simple` et `slug` 
 |---|---|---|
 | Article complet | 1 → 5 | article publié + note éditoriale |
 | Recherche seule | 1 → 2 | dossier de sources + table des affirmations + plan proposé |
-| Vérification / fact-check | 4 + `verifier_references.py` + `verifier_article.py`, sans réécrire | rapport : erreurs démontrées, affirmations P0, bibliographie, neutralité, corrections proposées |
-| Révision (après fact-check ou sur demande) | fact-check s'il n'existe pas, puis `revision-enrichissement.md` : corriger → retirer → restructurer → enrichir, puis 4 et 5 | article révisé et enrichi + journal des modifications + note éditoriale |
+| Vérification / fact-check | 4 + `verifier_references.py` + `verifier_article.py`, sans réécrire | rapport archivé `ressources/fact-checks/<slug>-AAAA-MM-JJ.md` (`rapport-fact-check.md`) + ligne au registre + résumé à l'utilisateur |
+| Révision (après fact-check ou sur demande) | fact-check s'il n'existe pas, puis `revision-enrichissement.md` : corriger → retirer → restructurer → enrichir, puis 4 et 5 | article révisé et enrichi + journal des modifications + note éditoriale + section « Suivi » du rapport et registre mis à jour (statut `révisé`) |
 | Contrôle du corpus | `verifier_article.py --corpus` | état des index, doublons, articles non conformes |
 | Plan éditorial (« quoi écrire ensuite ? ») | `inventaire_sujets.py` + `sujets-derives.md` | sujets prioritaires avec leurs articles-mères, incohérences des fiches, documentation disponible pour les trois premiers |
 
 ## Livraison
 
-Un rapport de fact-check est rédigé pour pouvoir servir de base à la révision : chaque problème y est localisé (passage), qualifié (erreur, P0, référence douteuse, neutralité) et accompagné de sa source, afin qu'il devienne une ligne du journal des modifications.
+Chaque fact-check donne lieu à un rapport écrit et archivé (`rapport-fact-check.md`) : `ressources/fact-checks/<slug>-AAAA-MM-JJ.md`, inscrit au registre `ressources/fact-checks/README.md`. Chaque problème y porte un identifiant, sa localisation (passage, ligne), sa qualification (erreur démontrée, P0, référence douteuse, neutralité, forme) et sa source, afin qu'il devienne une ligne du journal des modifications. À la révision, le rapport n'est pas réécrit : sa section « Suivi » et le registre reçoivent le nouveau statut.
 
 Terminer chaque article par une **note éditoriale** courte destinée à l'utilisateur (hors du fichier) : sections faiblement sourcées, affirmations retirées faute de preuve, débats non tranchés, résultat du vérificateur.
 
