@@ -7,7 +7,7 @@ Plugin [Claude Code](https://claude.com/claude-code) d'écriture de contenu, de 
 | `redactor:encyclopedia` | articles encyclopédiques et wikis | disponible |
 | `redactor:presse` | presse quotidienne et magazine | disponible |
 | `redactor:roman` | romans | disponible |
-| `redactor:nouvelle` | nouvelles | prévu |
+| `redactor:nouvelle` | nouvelles, concours, recueils | disponible |
 | `redactor:manga` | manga | prévu |
 
 ## Installation
@@ -155,6 +155,53 @@ On l'appelle en langage naturel (« aide-moi à construire mon roman », « écr
 
 Exemple complet, avec un polar fictif (plan, bible, registre d'indices, deux chapitres, fiche de voix) : [`exemples/roman/`](exemples/roman/).
 
+## `redactor:nouvelle`
+
+Une nouvelle vise un effet, et tout dans le texte y concourt. Le skill suit cinq phases ; trois d'entre elles attendent la validation de l'auteur :
+
+1. idée, effet visé et contraintes *(validation)* ;
+2. construction, en partant de la chute ou d'une image ;
+3. premier jet, rédigé par Claude ou par l'auteur *(validation)* ;
+4. resserrement ;
+5. version finale et mise en forme *(validation)*.
+
+Il sert trois usages :
+
+- la nouvelle isolée ;
+- le concours ou l'appel à textes : le règlement devient une fiche dans `concours/`, que le script vérifie ;
+- le recueil : ordre, fil rouge et manuscrit assemblé.
+
+Il réutilise la fiche de voix, la méthode de la scène, les genres et les contrôles de style du skill roman.
+
+Deux scripts l'accompagnent :
+
+- `verifier_nouvelle.py` mesure les mots et les signes, espaces comprises. Il contrôle aussi la conformité au règlement :
+  - signes et mots minimum et maximum ;
+  - phrase imposée et sa place ;
+  - mots imposés ;
+  - anonymat, titre exigé, date limite.
+
+  Il applique les contrôles de style du roman et, avec `--recueil`, vérifie tout le recueil.
+- `assembler_nouvelle.py` met en forme une nouvelle ou assemble le recueil, puis l'exporte en .docx ou en PDF avec pandoc. Quand le concours exige l'anonymat, le texte sort sans nom d'auteur.
+
+On l'appelle en langage naturel (« écris une nouvelle sur… », « vérifie que ma nouvelle respecte le règlement », « organise mon recueil ») ou avec `/redactor:nouvelle`.
+
+### Configurer : section `nouvelle` de `redactor.json`
+
+| Clé | Rôle | Défaut |
+|---|---|---|
+| `charte` | fiche de voix de l'auteur | charte commune, sinon aucune |
+| `auteur` | nom d'auteur (manuscrit, contrôle d'anonymat) | aucun |
+| `titre_recueil` | titre du recueil | nom du projet |
+| `dossier_nouvelles` | un fichier Markdown par nouvelle | `nouvelles` |
+| `dossier_concours` | une fiche de règlement par concours | `concours` |
+| `recueil` | ordre des nouvelles du recueil | `recueil.md` |
+| `dossier_manuscrit` | textes mis en forme et exports | `manuscrit` |
+| `tics` | mots ou tournures à surveiller | aucun |
+| `statuts` | étapes d'une nouvelle ; la dernière vaut « fini » | `["idee", "premier-jet", "revise", "final"]` |
+
+Exemple complet, avec deux nouvelles, un recueil et le règlement d'un concours fictif : [`exemples/nouvelle/`](exemples/nouvelle/).
+
 ## Développement
 
 Tester le plugin en local sans le publier :
@@ -170,6 +217,7 @@ Lancer les tests, skill par skill :
 (cd skills/encyclopedia/scripts && python -m unittest discover)
 (cd skills/presse/scripts && python -m unittest discover)
 (cd skills/roman/scripts && python -m unittest discover)
+(cd skills/nouvelle/scripts && python -m unittest discover)
 ```
 
 ## Licence

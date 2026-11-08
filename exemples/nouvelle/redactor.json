@@ -1,0 +1,13 @@
+{
+  "projet": "Marées",
+  "charte": "voix.md",
+  "nouvelle": {
+    "auteur": "Claire Exemple",
+    "titre_recueil": "Marées",
+    "dossier_nouvelles": "nouvelles",
+    "dossier_concours": "concours",
+    "recueil": "recueil.md",
+    "dossier_manuscrit": "manuscrit",
+    "tics": ["soudain"]
+  }
+}

@@ -47,7 +47,7 @@ class Config:
 DEFAUT = Config()
 _TUPLES = {"fichiers_index", "champs_obligatoires", "champs_recommandes", "statuts"}
 # Sections propres aux autres skills du plugin (lues par leurs propres scripts).
-SECTIONS_GENRES = frozenset({"presse", "roman"})
+SECTIONS_GENRES = frozenset({"presse", "roman", "nouvelle"})
 
 
 def depuis_dict(donnees: dict) -> Config:
