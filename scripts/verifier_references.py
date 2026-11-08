@@ -48,7 +48,10 @@ BIBLIO_RE = re.compile(r"^## +(?:bibliographie|références bibliographiques|ref
 ENTREE_RE = re.compile(r"^\s*(?:[-*]|\d+\.)\s+(.+)$")
 DOI_RE = re.compile(r"10\.\d{4,9}/[^\s,;)»]+")
 GUILLEMETS_RE = re.compile(r"«\s*(.+?)\s*»")
-ITALIQUE_RE = re.compile(r"(?<!\*)\*([^*]+)\*(?!\*)")
+ITALIQUE_RE = re.compile(r"(?<!\*)\*([^*]+)\*(?!\*)|(?<![\w*])_([^_]+)_(?!\w)")
+# Indices qu'un titre en italique est celui d'un article de revue, non d'un livre.
+REVUE_RE = re.compile(r"\d+\s*\(\d[\d–-]*\)|vol\.|p\.\s*\d+\s*[–-]|journal|letters|review|proceedings|"
+                      r"bulletin|comptes rendus|nature|science|geology|geosystems|publications", re.IGNORECASE)
 ANNEE_RE = re.compile(r"\b(1[5-9]\d{2}|20\d{2})\b")
 ARXIV_RE = re.compile(r"arxiv(?:\.org/abs/|:)\s*(\d{4}\.\d{4,5}(?:v\d+)?|[a-z.-]+/\d{7})", re.IGNORECASE)
 URL_RE = re.compile(r"https?://[^\s<>»)\]]+")
@@ -98,7 +101,10 @@ def analyser_entree(ligne: str) -> Reference:
     doi = doi_m.group(0).rstrip(".") if doi_m else None
     guillemets = GUILLEMETS_RE.search(ligne)
     italique = ITALIQUE_RE.search(ligne)
-    titre = (guillemets or italique).group(1).strip().rstrip(".") if (guillemets or italique) else ""
+    titre_m = guillemets or italique
+    titre = next(g for g in titre_m.groups() if g).strip().rstrip(".") if titre_m else ""
+    apres_titre = ligne[titre_m.end():] if titre_m else ""
+    est_livre = guillemets is None and italique is not None and not REVUE_RE.search(apres_titre)
     arxiv_m = ARXIV_RE.search(ligne)
     urls = [u.rstrip(".,;") for u in URL_RE.findall(ligne) if "doi.org/" not in u]
     hors_titre = ligne.replace(titre, " ") if titre else ligne
@@ -106,7 +112,7 @@ def analyser_entree(ligne: str) -> Reference:
     annee_m = ANNEE_RE.search(sans_identifiants)
     auteur = re.split(r"[,(]", ligne.replace("*", ""), maxsplit=1)[0].strip()
     return Reference(ligne.strip(), auteur, titre, int(annee_m.group(1)) if annee_m else None,
-                     doi, est_livre=guillemets is None and italique is not None,
+                     doi, est_livre=est_livre,
                      arxiv=arxiv_m.group(1) if arxiv_m else None, url=urls[0] if urls else None)
 
 
@@ -114,7 +120,7 @@ def extraire_references(texte: str) -> list[Reference]:
     refs = []
     for ligne in section_bibliographie(texte).splitlines():
         m = ENTREE_RE.match(ligne)
-        if m:
+        if m and re.search(r"[^\W\d_]", m.group(1)):
             refs.append(analyser_entree(m.group(1)))
     return refs
 
@@ -323,13 +329,13 @@ def verifier_par_url(ref: Reference, fetch_page) -> Verdict:
 
 def verifier_reference(ref: Reference, fetch=lire_json, fetch_page=lire_page) -> Verdict:
     if not ref.titre:
-        return Verdict(ref, A_CONFIRMER, "Titre non repéré (ni « guillemets » ni *italique*) : vérifier à la main.")
+        return Verdict(ref, A_CONFIRMER, "Titre non repéré (ni « guillemets » ni *italique* ni _italique_) : vérifier à la main.")
     if ref.arxiv:
         return verifier_arxiv(ref, fetch_page)
-    if ref.est_livre:
-        return verifier_livre(ref, fetch)
     if ref.doi:
         return verifier_par_doi(ref, fetch)
+    if ref.est_livre:
+        return verifier_livre(ref, fetch)
     verdict = verifier_par_recherche(ref, fetch)
     if verdict.statut == INTROUVABLE and ref.url:
         return verifier_par_url(ref, fetch_page)

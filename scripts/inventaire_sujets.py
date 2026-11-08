@@ -11,6 +11,9 @@ Lit toutes les fiches ressources/brainstorm/*-articles-derives.md (lignes de tab
   - signale les sujets cochés sans article correspondant ;
   - classe les sujets à rédiger : priorité, puis nombre de fiches qui les proposent.
 
+Liste aussi les liens /article/<slug> qui attendent leur article ; un sujet déjà cité par d'autres
+articles remonte dans le classement (priorité, puis liens en attente, puis nombre de fiches).
+
 Le rapprochement se fait sur le titre normalisé (sans article initial, accents ni parenthèses),
 comparé au titre_simple, au début du title et au slug de chaque article : un titre formulé
 autrement n'est pas reconnu, d'où des cas à vérifier à la main.
@@ -25,7 +28,7 @@ import argparse
 import re
 import sys
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import verifier_article as va
@@ -54,6 +57,7 @@ class Candidat:
     priorite: int
     fiches: tuple[str, ...]
     coche: bool
+    liens: int = 0  # nombre d'articles qui pointent déjà vers son slug conventionnel
 
 
 @dataclass(frozen=True)
@@ -62,6 +66,7 @@ class Rapport:
     a_rediger: list[Candidat]
     redige_non_coche: list[Candidat]
     coche_sans_article: list[Candidat]
+    liens_en_attente: list[tuple[str, int]] = ()  # (slug sans article, nombre d'articles citants)
 
 
 def normaliser(texte: str) -> str:
@@ -118,21 +123,31 @@ def fusionner(sujets: list[Sujet]) -> list[Candidat]:
     return candidats
 
 
+def liens_vers_absents(racine: Path) -> dict[str, int]:
+    """Slugs cités par des liens /article/<slug> sans article publié, avec le nombre d'articles citants."""
+    slugs, liens = va.carte_du_corpus(Path(racine))
+    return {cible: len(citants) for cible, citants in liens.items() if cible not in slugs}
+
+
 def inventorier(racine: Path, branche: str | None = None) -> Rapport:
-    candidats = fusionner(lire_fiches(racine))
+    attente = liens_vers_absents(racine)
+    candidats = [replace(c, liens=attente.get(va.slugifier(c.titre), 0)) for c in fusionner(lire_fiches(racine))]
     existants = cles_du_corpus(racine)
     redige_non_coche = [c for c in candidats if c.cle in existants and not c.coche]
     coche_sans_article = [c for c in candidats if c.coche and c.cle not in existants]
     a_rediger = [c for c in candidats if c.cle not in existants and not c.coche
                  and (not branche or branche.lower() in c.branche.lower())]
-    a_rediger.sort(key=lambda c: (-c.priorite, -len(c.fiches), c.cle))
-    return Rapport(candidats, a_rediger, redige_non_coche, coche_sans_article)
+    a_rediger.sort(key=lambda c: (-c.priorite, -c.liens, -len(c.fiches), c.cle))
+    en_attente = sorted(attente.items(), key=lambda kv: (-kv[1], kv[0]))
+    return Rapport(candidats, a_rediger, redige_non_coche, coche_sans_article, en_attente)
 
 
 # ── Affichage ──────────────────────────────────────────────────────────────
 
 def ligne_candidat(c: Candidat) -> str:
     sources = f" — proposé par {len(c.fiches)} fiches" if len(c.fiches) > 1 else ""
+    if c.liens:
+        sources += f" — déjà lié par {c.liens} article(s)"
     return f"  {'⭐' * c.priorite:<3} {c.titre}  [{c.branche}]{sources}  ({', '.join(c.fiches)})"
 
 
@@ -148,6 +163,10 @@ def afficher(rapport: Rapport, top: int) -> None:
         print(f"\n== Cochés sans article retrouvé ({len(rapport.coche_sans_article)}) : titre différent ou case cochée à tort")
         for c in rapport.coche_sans_article:
             print(ligne_candidat(c))
+    if rapport.liens_en_attente:
+        print(f"\n== Liens en attente d'article ({len(rapport.liens_en_attente)}) : slug cité (nombre d'articles citants)")
+        for slug, n in rapport.liens_en_attente:
+            print(f"  /article/{slug}  ({n})")
     print(f"\n== Priorités à rédiger (top {min(top, len(rapport.a_rediger))})")
     for c in rapport.a_rediger[:top]:
         print(ligne_candidat(c))

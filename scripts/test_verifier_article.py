@@ -292,6 +292,57 @@ class TestPublication(DepotTemporaire):
         self.assertNotIn("INDEX_ABSENT", codes(resultats))
 
 
+FM_EDOUARD = BON_FRONTMATTER.replace("Lac Kivu — Grand lac du Rift Albertin", "Lac Édouard — Lac du Rift Albertin") \
+    .replace('titre_simple: "Lac Kivu"', 'titre_simple: "Lac Édouard"').replace('slug: "lac-kivu"', 'slug: "lac-edouard"')
+
+
+def corps_voir_aussi(*lignes):
+    return BON_CORPS.replace("## Bibliographie", "## Voir aussi\n\n" + "\n".join(lignes) + "\n\n## Bibliographie")
+
+
+class TestLiensInternes(DepotTemporaire):
+    def test_slug_deduit_du_titre(self):
+        self.assertEqual(va.slugifier("Os d'Ishango"), "os-dishango")
+        self.assertEqual(va.slugifier("Lac Édouard"), "lac-edouard")
+        self.assertEqual(va.slugifier("Le fleuve Congo"), "fleuve-congo")
+        self.assertEqual(va.slugifier("L'Ubangi"), "ubangi")
+        self.assertEqual(va.slugifier("Mouvement du 23 mars (M23)"), "mouvement-du-23-mars")
+        self.assertEqual(va.slugifier("Hydrographie de la RDC"), "hydrographie-de-la-rdc")
+
+    def test_lien_vers_article_existant_ou_a_venir_accepte(self):
+        self.ecrire("articles/geographie/lac-edouard.md", FM_EDOUARD + "\n" + BON_CORPS)
+        corps = corps_voir_aussi("- [Lac Édouard](/article/lac-edouard)", "- [Semliki](/article/semliki)")
+        resultats = codes(self.verifier(corps=corps))
+        self.assertFalse(resultats & {"LIEN_CHEMIN_MD", "LIEN_SLUG_INVALIDE", "LIEN_SLUG_CONVENTION",
+                                      "VOIR_AUSSI_SANS_LIEN"})
+
+    def test_lien_relatif_vers_un_fichier_md_signale(self):
+        corps = corps_voir_aussi("- [Nyiragongo](../tectonique/nyiragongo.md)")
+        self.assertIn("LIEN_CHEMIN_MD", codes(self.verifier(corps=corps)))
+
+    def test_slug_mal_forme_signale(self):
+        corps = corps_voir_aussi("- [Semliki](/article/Semliki_River)")
+        self.assertIn("LIEN_SLUG_INVALIDE", codes(self.verifier(corps=corps)))
+
+    def test_lien_a_venir_hors_convention_signale(self):
+        corps = corps_voir_aussi("- [Rivière Semliki](/article/semliki)")
+        self.assertIn("LIEN_SLUG_CONVENTION", codes(self.verifier(corps=corps)))
+
+    def test_entree_voir_aussi_sans_lien_signalee(self):
+        corps = corps_voir_aussi("- Semliki")
+        self.assertIn("VOIR_AUSSI_SANS_LIEN", codes(self.verifier(corps=corps)))
+
+    def test_liens_en_attente_sous_un_autre_slug(self):
+        self.ecrire("articles/geographie/ishango.md", FM_EDOUARD.replace("lac-edouard", "os-dishango")
+                    .replace("Lac Édouard", "Os d'Ishango") + "\n" + corps_voir_aussi("- [Lac Kivu](/article/lac-kivu-rdc)"))
+        fm = BON_FRONTMATTER.replace('slug: "lac-kivu"', 'slug: "lac-kivu-rdc"')
+        self.assertNotIn("LIENS_EN_ATTENTE", codes(self.verifier(frontmatter=fm)))
+        autre = self.ecrire("articles/geographie/autre.md", FM_EDOUARD.replace("lac-edouard", "autre")
+                            .replace("Lac Édouard", "Autre") + "\n" + corps_voir_aussi("- [Lac Kivu](/article/lac-kivu)"))
+        self.assertTrue(autre.exists())
+        self.assertIn("LIENS_EN_ATTENTE", codes(self.verifier(frontmatter=fm)))
+
+
 class TestCorpus(DepotTemporaire):
     def test_derive_des_index_detectee(self):
         self.ecrire("articles/geographie/lac-kivu.md", BON_FRONTMATTER + "\n" + BON_CORPS)

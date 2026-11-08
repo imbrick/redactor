@@ -17,6 +17,7 @@ Ce que ce skill ajoute : **comment enquêter, comment écrire avec la clarté d'
 | `references/preuves-et-attribution.md` | dès la recherche (dossier de sources) et avant publication |
 | `references/enquete-avancee.md` | pour monter d'un niveau de preuve (P0 à P4) : sources primaires, texte intégral, page bloquée, contradictions ; toujours en révision |
 | `references/revision-enrichissement.md` | après un fact-check, et dès qu'il faut corriger, enrichir ou réécrire un article existant |
+| `references/liens-internes.md` | à la rédaction (« Voir aussi », liens dans le texte) et à la publication : format `/article/<slug>`, slug des articles à venir |
 | `references/rapport-fact-check.md` | à chaque fact-check : modèle du rapport, archivage dans `ressources/fact-checks/`, statuts et suivi |
 | `references/sujets-derives.md` | pendant l'enquête et la rédaction pour repérer les sujets dérivés ; à la publication pour la fiche brainstorm ; pour choisir le prochain article |
 
@@ -24,7 +25,7 @@ Ce que ce skill ajoute : **comment enquêter, comment écrire avec la clarté d'
 |---|---|
 | `scripts/verifier_references.py` | vérifie dans Crossref, OpenAlex et Open Library que chaque référence existe, contrôle les prépublications arXiv et, en dernier recours, la page de l'URL indiquée ; propose les DOI manquants et les textes intégraux en accès libre. Un lien injoignable donne « À CONFIRMER », jamais « INTROUVABLE » |
 | `scripts/inventaire_sujets.py` | agrège toutes les fiches brainstorm, fusionne les doublons, signale les sujets déjà rédigés mais non cochés et classe ceux qui restent à rédiger |
-| `scripts/verifier_article.py` | contrôle la forme et la publication (frontmatter lu par le site, notes, index), ainsi que les signaux de preuve et de rédaction (chiffres sans note, affirmations trop fortes, datations mélangées, listes ou paragraphes fragmentés) |
+| `scripts/verifier_article.py` | contrôle la forme et la publication (frontmatter lu par le site, notes, index), ainsi que les signaux de preuve et de rédaction (chiffres sans note, affirmations trop fortes, datations mélangées, listes ou paragraphes fragmentés) et les liens internes (format `/article/<slug>`, « Voir aussi » sans lien, liens en attente) |
 
 ## Les cinq phases
 
@@ -60,6 +61,7 @@ Si l'accès au web est indisponible, le dire et travailler seulement avec les so
 3. Expliquer (comment, pourquoi) plutôt qu'énumérer ; attribuer chaque estimation et interprétation. Écrire des paragraphes et des phrases élaborés, nourris de faits et de mécanismes, jamais de remplissage (`revision-enrichissement.md`, sections 3 à 5).
 4. Présenter les débats avec la structure Position A / Position B / État du débat, à poids proportionné.
 5. Frontmatter : celui de `ressources/PROMPT-REDACTION-ARTICLE.md`, avec en plus les contraintes du site décrites en phase 5.
+6. Liens internes et « Voir aussi » : chaque renvoi est un lien `[Titre](/article/<slug>)`, y compris vers un article qui n'existe pas encore, avec le slug conventionnel de son futur `titre_simple` (`liens-internes.md`).
 
 **Porte** : brouillon complet, sans section creuse ni remplissage.
 
@@ -74,7 +76,7 @@ Si l'accès au web est indisponible, le dire et travailler seulement avec les so
 
 ### Phase 5 — Publication
 
-1. Écrire le fichier `articles/<categorie>/<slug>.md`. Le site Next.js lit tout `articles/` ; un fichier sans `publication_status` y est **publié**.
+1. Écrire le fichier `articles/<categorie>/<slug>.md`. Le site Next.js lit tout `articles/` ; un fichier sans `publication_status` y est **publié**. Le slug est le slug conventionnel du `titre_simple` : des liens l'attendent peut-être déjà (`LIENS_EN_ATTENTE`, `liens-internes.md`).
 2. Lancer le vérificateur (chemin relatif à ce skill) :
    ```bash
    python <dossier-du-skill>/scripts/verifier_article.py articles/<categorie>/<slug>.md

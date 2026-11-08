@@ -111,6 +111,17 @@ class TestInventaire(DepotTemporaire):
         self.assertEqual(rapport.a_rediger, [])
 
 
+class TestLiensEnAttente(DepotTemporaire):
+    def test_lien_vers_un_sujet_non_redige_compte_et_remonte(self):
+        self.ecrire("articles/geographie/kasai.md", article("Kasaï", "kasai")
+                    + "\n## Voir aussi\n\n- [La Lufira](/article/lufira)\n- [Lac Mai-Ndombe](/article/lac-mai-ndombe)\n")
+        rapport = inv.inventorier(self.racine)
+        self.assertIn(("lufira", 1), list(rapport.liens_en_attente))
+        self.assertNotIn("lac-mai-ndombe", [s for s, _ in rapport.liens_en_attente])
+        lufira = next(c for c in rapport.a_rediger if c.cle == "lufira")
+        self.assertEqual(lufira.liens, 1)
+
+
 class TestPointEntree(DepotTemporaire):
     def test_sortie_normale(self):
         self.assertEqual(inv.main(["--root", str(self.racine), "--top", "2"]), 0)

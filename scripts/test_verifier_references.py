@@ -75,6 +75,49 @@ class TestExtraction(unittest.TestCase):
         self.assertEqual(vr.extraire_references("# Titre\n\nTexte.\n"), [])
 
 
+ARTICLE_SOULIGNE = textwrap.dedent('''\
+    # Titre
+
+    ## Références bibliographiques
+
+      * **Bird, P.** (2003). _An updated digital model of plate boundaries_. Geochemistry, Geophysics, Geosystems, 4(3). DOI: 10.1029/2001GC000252
+      * **Hartnady, C. J. H.** (2002). _Earthquake hazard in Africa: perspectives on the Nubia-Somalia boundary_. South African Journal of Science, 98(9–10).
+      * **Ndaywel è Nziem, I.** (1998). _Histoire générale du Congo_. Paris : De Boeck.
+
+
+    * * *
+    ''')
+
+
+class TestExtractionSouligne(unittest.TestCase):
+    def setUp(self):
+        self.refs = vr.extraire_references(ARTICLE_SOULIGNE)
+
+    def test_titre_en_italique_avec_tirets_bas_et_auteur_en_gras(self):
+        self.assertEqual(len(self.refs), 3)
+        self.assertEqual(self.refs[0].titre, "An updated digital model of plate boundaries")
+        self.assertEqual(self.refs[0].auteur, "Bird")
+        self.assertEqual(self.refs[0].annee, 2003)
+
+    def test_article_de_revue_reconnu_meme_en_italique(self):
+        self.assertFalse(self.refs[1].est_livre)
+
+    def test_livre_en_italique_reste_un_livre(self):
+        self.assertTrue(self.refs[2].est_livre)
+
+    def test_ligne_de_separation_ignoree(self):
+        self.assertNotIn("", [r.titre for r in self.refs])
+
+    def test_doi_verifie_avant_la_piste_livre(self):
+        ref = vr.Reference("x", "Bird", "An updated digital model of plate boundaries", 2003,
+                           "10.1029/2001GC000252", est_livre=True)
+        reseau = FauxReseau({
+            "api.crossref.org/works/10.1029": crossref_doi("An updated digital model of plate boundaries", 2003),
+            "api.openalex.org": {"open_access": {"oa_url": None}},
+        })
+        self.assertEqual(vr.verifier_reference(ref, reseau).statut, vr.TROUVE)
+
+
 class TestVerification(unittest.TestCase):
     def setUp(self):
         self.refs = vr.extraire_references(ARTICLE)

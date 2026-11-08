@@ -24,6 +24,7 @@ import argparse
 import datetime as dt
 import re
 import sys
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -67,6 +68,10 @@ PUCE_RE = re.compile(r"^\s*(?:[-*+]|\d+\.)\s+\S", re.MULTILINE)
 TITRE_RE = re.compile(r"^(#{2,6}) +(.+?)\s*$", re.MULTILINE)
 NUMERO_TITRE_RE = re.compile(r"^(?:[ivxlc]+|\d+)\.\s*")
 SECTIONS_HORS_PROSE = ("notes", "bibliograph", "chronolog", "sources", "voir aussi", "références")
+LIEN_RE = re.compile(r"(?<!!)\[([^\]]+)\]\(([^)\s]+)\)")
+LIEN_ARTICLE_PREFIXE = "/article/"
+PARENTHESES_RE = re.compile(r"\([^)]*\)")
+APOSTROPHES = "'’"
 PUCES_MIN_PAR_SECTION = 3
 PARAGRAPHE_COURT_MOTS = 30
 PARAGRAPHES_MIN_FRAGMENTATION = 5
@@ -417,6 +422,77 @@ def verifier_encodage(texte: str) -> list[Resultat]:
     return res
 
 
+# ── Liens internes ─────────────────────────────────────────────────────────
+# Convention : [Libellé](/article/<slug>). Le slug d'un article à venir se déduit de son
+# titre_simple avec slugifier(), si bien que le lien fonctionnera dès sa publication.
+
+def slugifier(titre: str) -> str:
+    """« Os d'Ishango » → os-dishango ; « Le fleuve Congo » → fleuve-congo."""
+    texte = ARTICLE_INITIAL_RE.sub("", PARENTHESES_RE.sub(" ", titre).strip())
+    texte = unicodedata.normalize("NFD", texte).encode("ascii", "ignore").decode().lower()
+    texte = re.sub(f"[{APOSTROPHES}]", "", texte)
+    return re.sub(r"[^a-z0-9]+", "-", texte).strip("-")
+
+
+def liens_internes(corps: str) -> list[tuple[str, str]]:
+    """(libellé, slug) de chaque lien /article/<slug> du corps."""
+    return [(lib, cible[len(LIEN_ARTICLE_PREFIXE):].strip("/")) for lib, cible in LIEN_RE.findall(corps)
+            if cible.startswith(LIEN_ARTICLE_PREFIXE)]
+
+
+def carte_du_corpus(racine: Path) -> tuple[dict[str, Path], dict[str, set[Path]]]:
+    """Slugs publiés (slug → fichier) et liens internes (slug cible → fichiers qui le citent)."""
+    slugs, liens = {}, {}
+    for chemin in lister_articles(racine):
+        fm = lire_frontmatter(chemin) or {}
+        slugs[str(fm.get("slug") or chemin.stem)] = chemin
+        for _, cible in liens_internes(separer_frontmatter(lire_texte(chemin))[1]):
+            liens.setdefault(cible, set()).add(chemin)
+    return slugs, liens
+
+
+def verifier_liens(chemin: Path, racine: Path, corps: str) -> list[Resultat]:
+    slugs = carte_du_corpus(racine)[0]
+    res = []
+    for libelle, cible in LIEN_RE.findall(corps):
+        if cible.startswith(("http://", "https://", "#", "mailto:")):
+            continue
+        if cible.endswith(".md") or ".md#" in cible:
+            fichier = (chemin.parent / cible.split("#")[0]).resolve()
+            fm = lire_frontmatter(fichier) if fichier.exists() else None
+            slug = str((fm or {}).get("slug") or slugifier(libelle))
+            res.append(avertissement("LIEN_CHEMIN_MD", f"Lien « {libelle} » vers un fichier : écrire [{libelle}](/article/{slug})."))
+        elif cible.startswith(LIEN_ARTICLE_PREFIXE):
+            slug = cible[len(LIEN_ARTICLE_PREFIXE):].strip("/")
+            if not SLUG_RE.match(slug):
+                res.append(avertissement("LIEN_SLUG_INVALIDE", f"Lien « {libelle} » : slug « {slug} » hors format (minuscules, chiffres, tirets)."))
+            elif slug not in slugs and slugifier(libelle) != slug:
+                res.append(avertissement("LIEN_SLUG_CONVENTION",
+                                         f"Lien à venir « {libelle} » → {slug} : la convention donnerait « {slugifier(libelle)} » ; "
+                                         "garder un seul slug par sujet, celui du futur titre_simple."))
+    voir_aussi = [c for _, t, c in sections(corps) if "voir aussi" in t.lower()]
+    sans_lien = [l for c in voir_aussi for l in c.splitlines() if PUCE_RE.match(l) and not LIEN_RE.search(l)]
+    if sans_lien:
+        res.append(avertissement("VOIR_AUSSI_SANS_LIEN",
+                                 f"{len(sans_lien)} entrée(s) de « Voir aussi » sans lien (premier : « {sans_lien[0].strip()[2:]} ») : "
+                                 "écrire [Titre](/article/<slug>), même si l'article n'existe pas encore."))
+    return res
+
+
+def verifier_liens_en_attente(chemin: Path, racine: Path, fm: dict) -> list[Resultat]:
+    """Des articles citent-ils ce sujet sous le slug conventionnel alors que l'article en a pris un autre ?"""
+    slug, titre = fm.get("slug"), fm.get("titre_simple")
+    if not isinstance(slug, str) or not isinstance(titre, str):
+        return []
+    attendu = slugifier(titre)
+    citants = carte_du_corpus(racine)[1].get(attendu, set()) - {chemin.resolve(), chemin}
+    if attendu == slug or not citants:
+        return []
+    return [avertissement("LIENS_EN_ATTENTE",
+                          f"{len(citants)} article(s) pointent déjà vers /article/{attendu} : adopter ce slug "
+                          f"ou corriger leurs liens ({', '.join(sorted(p.stem for p in citants))}).")]
+
+
 # ── Contrôles de publication ───────────────────────────────────────────────
 
 def est_reference(suffixe: str, texte: str) -> bool:
@@ -455,7 +531,8 @@ def verifier_article(chemin: Path, racine: Path) -> list[Resultat]:
     if erreur:
         return [bloquant("FM_INVALIDE", erreur)] + res
     return (verifier_champs(fm) + verifier_date_et_statut(fm) + verifier_emplacement(chemin, racine, fm)
-            + res + verifier_publication(chemin, racine, fm))
+            + res + verifier_liens(chemin, racine, corps) + verifier_liens_en_attente(chemin, racine, fm)
+            + verifier_publication(chemin, racine, fm))
 
 
 def compteur_annonce(texte: str) -> int | None:
