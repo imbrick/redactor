@@ -1,6 +1,6 @@
 # Rédaction journalistique au service de l'encyclopédie
 
-Le journalisme apporte à Kongopedia la clarté, la précision et la vérification. L'encyclopédie impose la neutralité, la permanence et la profondeur. Cette fiche dit ce qu'on emprunte au journalisme et ce qu'on lui laisse.
+Le journalisme apporte à l'encyclopédie la clarté, la précision et la vérification. L'encyclopédie impose la neutralité, la permanence et la profondeur. Cette fiche dit ce qu'on emprunte au journalisme et ce qu'on lui laisse.
 
 ## 1. Ce qu'on emprunte
 
@@ -13,7 +13,7 @@ La première phrase définit le sujet et donne l'essentiel : quoi, où, quand, e
 
 ### Le paragraphe d'enjeu (nut graph)
 
-Le deuxième paragraphe dit pourquoi le sujet importe : portée, période, acteurs, place dans l'histoire ou la géographie africaine. Il annonce les grands axes de l'article sans les résumer section par section.
+Le deuxième paragraphe dit pourquoi le sujet importe : portée, période, acteurs, place dans l'histoire ou la géographie de sa région. Il annonce les grands axes de l'article sans les résumer section par section.
 
 ### La pyramide inversée
 

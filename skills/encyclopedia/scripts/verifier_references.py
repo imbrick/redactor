@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vérificateur de références Kongopedia — chaque entrée de la bibliographie existe-t-elle ?
+"""Vérificateur de références bibliographiques — chaque entrée de la bibliographie existe-t-elle ?
 
 Usage :
     python verifier_references.py <article.md>
@@ -41,7 +41,7 @@ from pathlib import Path
 TROUVE, A_CONFIRMER, DIVERGENT = "TROUVÉ", "À CONFIRMER", "DIVERGENT"
 INTROUVABLE, ERREUR_RESEAU = "INTROUVABLE", "ERREUR RÉSEAU"
 SEUIL_TROUVE, SEUIL_PROCHE = 0.85, 0.6
-USER_AGENT = "kongopedia-verifier/1.0 (verification bibliographique)"
+USER_AGENT = "redactor-verifier/1.0 (verification bibliographique; https://github.com/imbrick/redactor)"
 DELAI_RESEAU_S = 20
 
 BIBLIO_RE = re.compile(r"^## +(?:bibliographie|références bibliographiques|references)\b.*$", re.IGNORECASE | re.MULTILINE)

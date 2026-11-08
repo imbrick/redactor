@@ -1,10 +1,10 @@
-# Méthode historique pour Kongopedia
+# Méthode historique
 
-À charger pour tout article qui raconte un passé : peuple, royaume, ville, événement, biographie, document primaire. La hiérarchie des sources (niveaux 1 à 8) est dans `kongopedia-editorial-skill` ; cette fiche dit comment **lire** ces sources.
+À charger pour tout article qui raconte un passé : peuple, royaume, ville, événement, biographie, document primaire. La hiérarchie des sources (niveaux 1 à 8) est celle de la charte du projet, à défaut celle de `preuves-et-attribution.md` (section 0) ; cette fiche dit comment **lire** ces sources.
 
 ## 1. Classer chaque source avant de l'utiliser
 
-| Catégorie | Ce que c'est | Exemples Kongopedia |
+| Catégorie | Ce que c'est | Exemples |
 |---|---|---|
 | Primaire | Produite à l'époque des faits ou par un témoin | Discours du 30 juin 1960, rapports d'administration coloniale, lettres, recensements, traditions orales recueillies |
 | Secondaire | Analyse d'historiens à partir des primaires | Monographies, articles de revues, thèses |
@@ -49,11 +49,11 @@ Ne jamais réduire une tradition orale à un « mythe » ni la traiter comme un 
 - Siècles en chiffres romains ; « av. J.-C. » et « apr. J.-C. » quand l'ère doit être précisée.
 - Datations radiocarbone : indiquer qu'elles sont calibrées (« cal. BP » ou « cal. av. J.-C. ») et citer l'étude.
 - Quand les sources donnent des dates différentes, donner la fourchette et attribuer chaque date.
-- Vérifier que la chronologie du texte ne contredit pas l'infobulle ni le tableau chronologique.
+- Vérifier que la chronologie du texte ne contredit pas l'encadré de synthèse ni le tableau chronologique.
 
 ## 7. Vocabulaire et anachronismes
 
-- Nommer les lieux, peuples et périodes avec les termes en usage à l'époque sur le continent (règle du point de vue africain, voir le skill éditorial). Pas de construction « ex-… ».
+- Nommer les lieux, peuples et périodes avec les termes en usage à l'époque dans la région concernée, selon les règles de la charte du projet. Pas de construction « ex-… ».
 - Termes coloniaux (« tribu », « indigène », « pacification », « découverte ») : seulement entre guillemets et attribués à leur auteur, quand on cite.
 - « Royaume », « empire », « chefferie », « État » : suivre l'usage de l'historiographie de référence pour l'entité concernée et signaler les débats.
 
@@ -63,7 +63,7 @@ Quand l'historiographie est divisée (par exemple sur les estimations du coût h
 
 ## 9. Points d'entrée bibliographiques
 
-À consulter réellement avant toute citation, jamais à citer de mémoire :
+À consulter réellement avant toute citation, jamais à citer de mémoire. Exemple pour l'histoire de l'Afrique centrale, à adapter au périmètre du projet :
 - *Histoire générale de l'Afrique*, UNESCO, 8 volumes.
 - Isidore Ndaywel è Nziem, *Histoire générale du Congo*, De Boeck, 1998.
 - Jan Vansina, *Kingdoms of the Savanna* (1966) et *Paths in the Rainforests* (1990).

@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-"""Vérificateur d'articles Kongopedia — contrôles déterministes avant publication.
+"""Vérificateur d'articles encyclopédiques — contrôles déterministes avant publication.
 
 Usage :
-    python verifier_article.py <article.md> [--root <depot>]
-    python verifier_article.py --corpus [--root <depot>]
+    python verifier_article.py <article.md> [--root <projet>]
+    python verifier_article.py --corpus [--root <projet>]
+
+Les conventions du projet (dossier des articles, champs obligatoires, index, fiches de
+sujets dérivés, préfixe des liens internes) viennent de redactor.json, à la racine du
+projet (voir projet.py). Sans ce fichier, les valeurs par défaut s'appliquent.
 
 Un article est contrôlé sur trois plans :
-  1. Frontmatter : ce que le frontend Next.js lit réellement (frontend/lib/content/articles.ts,
-     gray-matter + js-yaml).
-  2. Corps : règles maison (une H1, notes [^n] cohérentes, pas de « ex-… », anti-IA…).
-  3. Publication : présence dans INDEX.md, INDEX-ALPHABETIQUE.md et fiche brainstorm.
+  1. Frontmatter : YAML lu comme le ferait gray-matter / js-yaml, champs obligatoires, statut.
+  2. Corps : une H1, notes [^n] cohérentes, pas de « ex-… », formules mécaniques, preuve…
+  3. Publication : présence dans les index et fiche de sujets dérivés, si le projet en déclare.
 
 Codes de sortie :
   0  aucun contrôle bloquant n'échoue
   1  au moins un contrôle BLOQUANT échoue
-  2  impossible de vérifier (fichier illisible, racine introuvable, PyYAML absent, arguments)
+  2  impossible de vérifier (fichier illisible, racine introuvable, redactor.json invalide,
+     PyYAML absent, arguments)
 Dépendance : PyYAML.
 """
 
@@ -33,8 +37,9 @@ try:
 except ImportError:  # pragma: no cover - environnement sans PyYAML
     yaml = None
 
-INDEX_FICHIERS = ("INDEX.md", "INDEX-ALPHABETIQUE.md")
-STATUTS_VALIDES = {"draft", "review", "published"}
+import projet
+from projet import Config
+
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 ANCIENNE_VERSION_RE = re.compile(r"-(?:old|backup|bak|v\d+)$", re.IGNORECASE)
 CADRATINS_MAX_PAR_PARAGRAPHE = 2  # une incise « — … — » compte pour deux tirets
@@ -69,7 +74,6 @@ TITRE_RE = re.compile(r"^(#{2,6}) +(.+?)\s*$", re.MULTILINE)
 NUMERO_TITRE_RE = re.compile(r"^(?:[ivxlc]+|\d+)\.\s*")
 SECTIONS_HORS_PROSE = ("notes", "bibliograph", "chronolog", "sources", "voir aussi", "références")
 LIEN_RE = re.compile(r"(?<!!)\[([^\]]+)\]\(([^)\s]+)\)")
-LIEN_ARTICLE_PREFIXE = "/article/"
 PARENTHESES_RE = re.compile(r"\([^)]*\)")
 APOSTROPHES = "'’"
 PUCES_MIN_PAR_SECTION = 3
@@ -96,15 +100,15 @@ def avertissement(code: str, message: str) -> Resultat:
 # ── YAML aligné sur js-yaml (gray-matter) ──────────────────────────────────
 
 if yaml is not None:
-    class ChargeurKongopedia(yaml.SafeLoader):
+    class ChargeurFrontmatter(yaml.SafeLoader):
         """SafeLoader qui se comporte comme js-yaml côté site :
         seuls true/false sont des booléens (pas yes/no/on/off) et une clé dupliquée est une erreur."""
 
-    ChargeurKongopedia.yaml_implicit_resolvers = {
+    ChargeurFrontmatter.yaml_implicit_resolvers = {
         initiale: [(tag, regex) for tag, regex in resolveurs if tag != "tag:yaml.org,2002:bool"]
         for initiale, resolveurs in yaml.SafeLoader.yaml_implicit_resolvers.items()
     }
-    ChargeurKongopedia.add_implicit_resolver(
+    ChargeurFrontmatter.add_implicit_resolver(
         "tag:yaml.org,2002:bool", re.compile(r"^(?:true|True|TRUE|false|False|FALSE)$"), list("tTfF"))
 
     def _mapping_sans_doublon(chargeur, noeud, deep=False):
@@ -118,7 +122,7 @@ if yaml is not None:
             vues.add(cle)
         return chargeur.construct_mapping(noeud, deep=deep)
 
-    ChargeurKongopedia.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping_sans_doublon)
+    ChargeurFrontmatter.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping_sans_doublon)
 
 
 # ── Lecture ────────────────────────────────────────────────────────────────
@@ -136,7 +140,7 @@ def separer_frontmatter(texte: str) -> tuple[str | None, str]:
 
 def charger_frontmatter(brut: str) -> tuple[dict | None, str | None]:
     try:
-        donnees = yaml.load(brut, Loader=ChargeurKongopedia) or {}
+        donnees = yaml.load(brut, Loader=ChargeurFrontmatter) or {}
     except yaml.YAMLError as err:
         return None, f"YAML invalide : {err}"
     if not isinstance(donnees, dict):
@@ -160,18 +164,23 @@ def est_vide(valeur) -> bool:
     return valeur is None or valeur == [] or (isinstance(valeur, str) and not valeur.strip())
 
 
-def est_publie(fm: dict) -> bool:
-    """Même règle que articles.ts : statut absent, vide ou « published »."""
-    statut = fm.get("publication_status")
+def est_publie(fm: dict, cfg: Config = projet.DEFAUT) -> bool:
+    """Statut absent, vide ou « published » : l'article est publié."""
+    statut = fm.get(cfg.champ_statut)
     return not statut or statut == "published"
 
 
+def dossier_articles(racine: Path) -> Path:
+    return Path(racine) / projet.charger(racine).dossier_articles
+
+
 def lister_articles(racine: Path) -> list[Path]:
-    dossier = racine / "articles"
+    dossier = dossier_articles(racine)
     if not dossier.is_dir():
         return []
+    index = {Path(f).name for f in projet.charger(racine).fichiers_index}
     return sorted(p for p in dossier.rglob("*") if p.is_file() and p.name.endswith(".md")
-                  and p.name not in INDEX_FICHIERS)
+                  and p.name not in index)
 
 
 def sans_code(corps: str) -> str:
@@ -193,7 +202,7 @@ def sans_code(corps: str) -> str:
 
 def chemin_dans_articles(chemin: Path, racine: Path) -> str | None:
     try:
-        return chemin.resolve().relative_to((racine / "articles").resolve()).as_posix()
+        return chemin.resolve().relative_to(dossier_articles(racine).resolve()).as_posix()
     except ValueError:
         return None
 
@@ -210,36 +219,35 @@ def verifier_slug(slug) -> list[Resultat]:
     return []
 
 
-def verifier_champs(fm: dict) -> list[Resultat]:
-    res = []
-    if est_vide(fm.get("title")):
-        res.append(bloquant("FM_TITLE", "Champ « title » absent : le site ne peut pas afficher l'article."))
-    res += verifier_slug(fm.get("slug"))
-    titre_simple = fm.get("titre_simple")
-    if est_vide(titre_simple):
-        res.append(bloquant("FM_TITRE_SIMPLE", "Champ « titre_simple » absent (sert à l'index et aux menus)."))
-    elif ARTICLE_INITIAL_RE.match(str(titre_simple)):
-        res.append(avertissement("FM_TITRE_SIMPLE_ARTICLE",
-                                 f"« titre_simple » commence par un article : « {titre_simple} »."))
-    if est_vide(fm.get("excerpt")) and est_vide(fm.get("summary")):
-        res.append(avertissement("FM_RESUME", "Ni « excerpt » ni « summary » : la liste d'articles n'aura pas de résumé."))
-    if est_vide(fm.get("categories")):
-        res.append(avertissement("FM_CATEGORIES", "Champ « categories » vide ou absent."))
+def verifier_champs(fm: dict, cfg: Config = projet.DEFAUT) -> list[Resultat]:
+    res = verifier_slug(fm.get("slug"))
+    for champ in cfg.champs_obligatoires:
+        if champ != "slug" and est_vide(fm.get(champ)):
+            res.append(bloquant(f"FM_{champ.upper()}", f"Champ obligatoire « {champ} » absent (redactor.json)."))
+    titre_court = fm.get(cfg.champ_titre_court) if cfg.champ_titre_court else None
+    if not est_vide(titre_court) and ARTICLE_INITIAL_RE.match(str(titre_court)):
+        res.append(avertissement(f"FM_{cfg.champ_titre_court.upper()}_ARTICLE",
+                                 f"« {cfg.champ_titre_court} » commence par un article : « {titre_court} »."))
+    for groupe in cfg.champs_recommandes:
+        champs = groupe.split("|")
+        if all(est_vide(fm.get(c)) for c in champs):
+            libelle = " ou ".join(f"« {c} »" for c in champs)
+            res.append(avertissement(f"FM_{champs[0].upper()}", f"Champ recommandé {libelle} vide ou absent."))
     return res
 
 
-def verifier_date_et_statut(fm: dict) -> list[Resultat]:
+def verifier_date_et_statut(fm: dict, cfg: Config = projet.DEFAUT) -> list[Resultat]:
     res = []
     date = fm.get("date")
     if date is None:
         res.append(avertissement("FM_DATE", "Champ « date » absent : tri chronologique impossible."))
     elif isinstance(date, (dt.date, dt.datetime)):
         res.append(bloquant("FM_DATE_NON_QUOTEE",
-                            f"La date {date} n'est pas entre guillemets : gray-matter la convertit en objet Date "
-                            "(bug corrigé au commit 228c102). Écrire date: \"AAAA-MM-JJ\"."))
-    statut = fm.get("publication_status")
-    if not est_vide(statut) and not (isinstance(statut, str) and statut in STATUTS_VALIDES):
-        res.append(bloquant("FM_STATUT", f"publication_status « {statut} » invalide (draft, review ou published)."))
+                            f"La date {date} n'est pas entre guillemets : les lecteurs YAML (gray-matter, PyYAML) "
+                            "la convertissent en objet Date. Écrire date: \"AAAA-MM-JJ\"."))
+    statut = fm.get(cfg.champ_statut)
+    if not est_vide(statut) and not (isinstance(statut, str) and statut in cfg.statuts):
+        res.append(bloquant("FM_STATUT", f"{cfg.champ_statut} « {statut} » invalide ({', '.join(cfg.statuts)})."))
     return res
 
 
@@ -247,32 +255,33 @@ def verifier_doublons(chemin: Path, racine: Path, fm: dict) -> list[Resultat]:
     slug = fm.get("slug")
     if not isinstance(slug, str) or not slug:
         return []
-    res = []
+    res, cfg = [], projet.charger(racine)
     for p in lister_articles(racine):
         if p.resolve() == chemin.resolve():
             continue
         autre = lire_frontmatter(p)
-        if autre and autre.get("slug") == slug and est_publie(autre):
+        if autre and autre.get("slug") == slug and est_publie(autre, cfg):
             message = f"Slug « {slug} » déjà utilisé par {p.relative_to(racine).as_posix()} (publié)."
-            res.append(bloquant("SLUG_DUPLIQUE", message) if est_publie(fm)
+            res.append(bloquant("SLUG_DUPLIQUE", message) if est_publie(fm, cfg)
                        else avertissement("SLUG_DUPLIQUE", message + " Conflit dès la publication de ce brouillon."))
     return res
 
 
 def verifier_emplacement(chemin: Path, racine: Path, fm: dict) -> list[Resultat]:
+    cfg = projet.charger(racine)
     rel = chemin_dans_articles(chemin, racine)
     if rel is None:
-        return [bloquant("FICHIER_EMPLACEMENT", "L'article n'est pas sous articles/ : le site ne le verra pas.")]
+        return [bloquant("FICHIER_EMPLACEMENT", f"L'article n'est pas sous {cfg.dossier_articles}/ : il ne sera pas publié.")]
     res = []
     slug = fm.get("slug")
-    if ANCIENNE_VERSION_RE.search(chemin.stem) and est_publie(fm):
+    if ANCIENNE_VERSION_RE.search(chemin.stem) and est_publie(fm, cfg):
         res.append(avertissement("FICHIER_ANCIENNE_VERSION",
                                  f"« {chemin.name} » ressemble à une ancienne version mais sera publiée en double : "
-                                 "la sortir de articles/ ou lui donner publication_status: \"draft\"."))
+                                 f"la sortir de {cfg.dossier_articles}/ ou lui donner {cfg.champ_statut}: \"draft\"."))
     if isinstance(slug, str) and slug and chemin.stem != slug:
         res.append(avertissement("FICHIER_NOM", f"Nom de fichier « {chemin.name} » différent du slug (« {slug}.md » attendu)."))
     if "/" not in rel:
-        res.append(avertissement("FICHIER_CATEGORIE", "Article placé à la racine de articles/, sans dossier de catégorie."))
+        res.append(avertissement("FICHIER_CATEGORIE", f"Article placé à la racine de {cfg.dossier_articles}/, sans dossier de catégorie."))
     return res + verifier_doublons(chemin, racine, fm)
 
 
@@ -423,8 +432,8 @@ def verifier_encodage(texte: str) -> list[Resultat]:
 
 
 # ── Liens internes ─────────────────────────────────────────────────────────
-# Convention : [Libellé](/article/<slug>). Le slug d'un article à venir se déduit de son
-# titre_simple avec slugifier(), si bien que le lien fonctionnera dès sa publication.
+# Convention : [Libellé](<prefixe_liens><slug>), /article/<slug> par défaut. Le slug d'un article
+# à venir se déduit de son titre court avec slugifier(), si bien que le lien fonctionnera dès sa publication.
 
 def slugifier(titre: str) -> str:
     """« Os d'Ishango » → os-dishango ; « Le fleuve Congo » → fleuve-congo."""
@@ -434,26 +443,27 @@ def slugifier(titre: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", texte).strip("-")
 
 
-def liens_internes(corps: str) -> list[tuple[str, str]]:
-    """(libellé, slug) de chaque lien /article/<slug> du corps."""
-    return [(lib, cible[len(LIEN_ARTICLE_PREFIXE):].strip("/")) for lib, cible in LIEN_RE.findall(corps)
-            if cible.startswith(LIEN_ARTICLE_PREFIXE)]
+def liens_internes(corps: str, prefixe: str = projet.DEFAUT.prefixe_liens) -> list[tuple[str, str]]:
+    """(libellé, slug) de chaque lien interne <prefixe><slug> du corps."""
+    return [(lib, cible[len(prefixe):].strip("/")) for lib, cible in LIEN_RE.findall(corps)
+            if cible.startswith(prefixe)]
 
 
 def carte_du_corpus(racine: Path) -> tuple[dict[str, Path], dict[str, set[Path]]]:
     """Slugs publiés (slug → fichier) et liens internes (slug cible → fichiers qui le citent)."""
-    slugs, liens = {}, {}
+    slugs, liens, prefixe = {}, {}, projet.charger(racine).prefixe_liens
     for chemin in lister_articles(racine):
         fm = lire_frontmatter(chemin) or {}
         slugs[str(fm.get("slug") or chemin.stem)] = chemin
-        for _, cible in liens_internes(separer_frontmatter(lire_texte(chemin))[1]):
+        for _, cible in liens_internes(separer_frontmatter(lire_texte(chemin))[1], prefixe):
             liens.setdefault(cible, set()).add(chemin)
     return slugs, liens
 
 
 def verifier_liens(chemin: Path, racine: Path, corps: str) -> list[Resultat]:
     slugs = carte_du_corpus(racine)[0]
-    res = []
+    cfg = projet.charger(racine)
+    prefixe, res = cfg.prefixe_liens, []
     for libelle, cible in LIEN_RE.findall(corps):
         if cible.startswith(("http://", "https://", "#", "mailto:")):
             continue
@@ -461,27 +471,28 @@ def verifier_liens(chemin: Path, racine: Path, corps: str) -> list[Resultat]:
             fichier = (chemin.parent / cible.split("#")[0]).resolve()
             fm = lire_frontmatter(fichier) if fichier.exists() else None
             slug = str((fm or {}).get("slug") or slugifier(libelle))
-            res.append(avertissement("LIEN_CHEMIN_MD", f"Lien « {libelle} » vers un fichier : écrire [{libelle}](/article/{slug})."))
-        elif cible.startswith(LIEN_ARTICLE_PREFIXE):
-            slug = cible[len(LIEN_ARTICLE_PREFIXE):].strip("/")
+            res.append(avertissement("LIEN_CHEMIN_MD", f"Lien « {libelle} » vers un fichier : écrire [{libelle}]({prefixe}{slug})."))
+        elif cible.startswith(prefixe):
+            slug = cible[len(prefixe):].strip("/")
             if not SLUG_RE.match(slug):
                 res.append(avertissement("LIEN_SLUG_INVALIDE", f"Lien « {libelle} » : slug « {slug} » hors format (minuscules, chiffres, tirets)."))
             elif slug not in slugs and slugifier(libelle) != slug:
                 res.append(avertissement("LIEN_SLUG_CONVENTION",
                                          f"Lien à venir « {libelle} » → {slug} : la convention donnerait « {slugifier(libelle)} » ; "
-                                         "garder un seul slug par sujet, celui du futur titre_simple."))
+                                         f"garder un seul slug par sujet, celui du futur « {cfg.champ_titre} »."))
     voir_aussi = [c for _, t, c in sections(corps) if "voir aussi" in t.lower()]
     sans_lien = [l for c in voir_aussi for l in c.splitlines() if PUCE_RE.match(l) and not LIEN_RE.search(l)]
     if sans_lien:
         res.append(avertissement("VOIR_AUSSI_SANS_LIEN",
                                  f"{len(sans_lien)} entrée(s) de « Voir aussi » sans lien (premier : « {sans_lien[0].strip()[2:]} ») : "
-                                 "écrire [Titre](/article/<slug>), même si l'article n'existe pas encore."))
+                                 f"écrire [Titre]({prefixe}<slug>), même si l'article n'existe pas encore."))
     return res
 
 
 def verifier_liens_en_attente(chemin: Path, racine: Path, fm: dict) -> list[Resultat]:
     """Des articles citent-ils ce sujet sous le slug conventionnel alors que l'article en a pris un autre ?"""
-    slug, titre = fm.get("slug"), fm.get("titre_simple")
+    cfg = projet.charger(racine)
+    slug, titre = fm.get("slug"), fm.get(cfg.champ_titre)
     if not isinstance(slug, str) or not isinstance(titre, str):
         return []
     attendu = slugifier(titre)
@@ -489,7 +500,7 @@ def verifier_liens_en_attente(chemin: Path, racine: Path, fm: dict) -> list[Resu
     if attendu == slug or not citants:
         return []
     return [avertissement("LIENS_EN_ATTENTE",
-                          f"{len(citants)} article(s) pointent déjà vers /article/{attendu} : adopter ce slug "
+                          f"{len(citants)} article(s) pointent déjà vers {cfg.prefixe_liens}{attendu} : adopter ce slug "
                           f"ou corriger leurs liens ({', '.join(sorted(p.stem for p in citants))}).")]
 
 
@@ -500,18 +511,21 @@ def est_reference(suffixe: str, texte: str) -> bool:
 
 
 def verifier_publication(chemin: Path, racine: Path, fm: dict) -> list[Resultat]:
+    cfg = projet.charger(racine)
     suffixe = chemin_dans_articles(chemin, racine)
-    if not est_publie(fm) or suffixe is None:
+    if not est_publie(fm, cfg) or suffixe is None:
         return []
     res = []
-    for fichier, code in (("INDEX.md", "INDEX_ABSENT"), ("INDEX-ALPHABETIQUE.md", "INDEX_ALPHA_ABSENT")):
-        index = racine / "articles" / fichier
+    for rang, fichier in enumerate(cfg.fichiers_index):
+        index = dossier_articles(racine) / fichier
         if not index.exists() or not est_reference(suffixe, lire_texte(index)):
-            res.append(avertissement(code, f"Article absent de articles/{fichier}."))
-    slug = fm.get("slug") if isinstance(fm.get("slug"), str) else chemin.stem
-    if not (racine / "ressources" / "brainstorm" / f"{slug}-articles-derives.md").exists():
-        res.append(avertissement("BRAINSTORM_ABSENT",
-                                 f"Fiche ressources/brainstorm/{slug}-articles-derives.md absente."))
+            code = "INDEX_ABSENT" if rang == 0 else f"INDEX_{rang + 1}_ABSENT"
+            res.append(avertissement(code, f"Article absent de {cfg.dossier_articles}/{fichier}."))
+    if cfg.dossier_brainstorm:
+        slug = fm.get("slug") if isinstance(fm.get("slug"), str) else chemin.stem
+        fiche = f"{cfg.dossier_brainstorm}/{slug}{cfg.suffixe_brainstorm}"
+        if not (racine / fiche).exists():
+            res.append(avertissement("BRAINSTORM_ABSENT", f"Fiche {fiche} absente."))
     return res
 
 
@@ -530,7 +544,8 @@ def verifier_article(chemin: Path, racine: Path) -> list[Resultat]:
     fm, erreur = charger_frontmatter(brut)
     if erreur:
         return [bloquant("FM_INVALIDE", erreur)] + res
-    return (verifier_champs(fm) + verifier_date_et_statut(fm) + verifier_emplacement(chemin, racine, fm)
+    cfg = projet.charger(racine)
+    return (verifier_champs(fm, cfg) + verifier_date_et_statut(fm, cfg) + verifier_emplacement(chemin, racine, fm)
             + res + verifier_liens(chemin, racine, corps) + verifier_liens_en_attente(chemin, racine, fm)
             + verifier_publication(chemin, racine, fm))
 
@@ -541,40 +556,38 @@ def compteur_annonce(texte: str) -> int | None:
 
 
 def verifier_index(racine: Path, fichier: str, articles: list[Path]) -> list[Resultat]:
-    index = racine / "articles" / fichier
+    dossier = dossier_articles(racine)
+    index = dossier / fichier
     if not index.exists():
-        return [bloquant("CORPUS_INDEX_ABSENT", f"articles/{fichier} introuvable.")]
+        return [bloquant("CORPUS_INDEX_ABSENT", f"{projet.charger(racine).dossier_articles}/{fichier} introuvable.")]
     texte = lire_texte(index)
     res = []
     annonce = compteur_annonce(texte)
     if annonce is not None and annonce != len(articles):
         res.append(avertissement("CORPUS_COMPTEUR", f"{fichier} annonce {annonce} articles, le corpus en compte {len(articles)}."))
     for p in articles:
-        suffixe = p.relative_to(racine / "articles").as_posix()
+        suffixe = p.relative_to(dossier).as_posix()
         if not est_reference(suffixe, texte):
             res.append(avertissement("CORPUS_NON_INDEXE", f"{fichier} : {suffixe} n'est pas indexé."))
     sans_url = re.sub(r"https?://\S+", "", texte)
     for lien in sorted(set(re.findall(r"[\w./-]+\.md", sans_url))):
-        if not ((racine / lien).exists() or (racine / "articles" / lien).exists()):
+        if not ((racine / lien).exists() or (dossier / lien).exists()):
             res.append(avertissement("CORPUS_LIEN_MORT", f"{fichier} pointe vers {lien}, qui n'existe pas."))
     return res
 
 
 def verifier_corpus(racine: Path) -> list[Resultat]:
     racine = Path(racine)
-    articles = [p for p in lister_articles(racine) if est_publie(lire_frontmatter(p) or {})]
+    cfg = projet.charger(racine)
+    articles = [p for p in lister_articles(racine) if est_publie(lire_frontmatter(p) or {}, cfg)]
     res = []
-    for fichier in INDEX_FICHIERS:
+    for fichier in cfg.fichiers_index:
         res += verifier_index(racine, fichier, articles)
     return res
 
 
 def trouver_racine(*departs: Path) -> Path | None:
-    for depart in departs:
-        for p in [depart, *depart.parents]:
-            if (p / "articles").is_dir() and ((p / "frontend").is_dir() or (p / "articles" / "INDEX.md").exists()):
-                return p
-    return None
+    return projet.trouver_racine(*departs)
 
 
 def afficher(titre: str, resultats: list[Resultat]) -> None:
@@ -585,10 +598,10 @@ def afficher(titre: str, resultats: list[Resultat]) -> None:
 
 
 def analyser_arguments(argv: list[str] | None) -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="Vérifie un article Kongopedia avant publication.")
+    ap = argparse.ArgumentParser(description="Vérifie un article encyclopédique avant publication.")
     ap.add_argument("article", nargs="?", help="chemin du fichier .md")
     ap.add_argument("--corpus", action="store_true", help="contrôler les index et tout le corpus")
-    ap.add_argument("--root", help="racine du dépôt Kongopedia (détectée sinon)")
+    ap.add_argument("--root", help="racine du projet, là où se trouve redactor.json (détectée sinon)")
     args = ap.parse_args(argv)
     if not args.article and not args.corpus:
         ap.error("indiquer un article ou --corpus")
@@ -626,10 +639,14 @@ def main(argv: list[str] | None = None) -> int:
     departs += [Path.cwd().resolve(), Path(__file__).resolve().parent]
     racine = Path(args.root).resolve() if args.root else trouver_racine(*departs)
     if racine is None:
-        print("Racine Kongopedia introuvable : préciser --root.", file=sys.stderr)
+        print("Racine du projet introuvable (ni redactor.json ni dossier articles/) : préciser --root.",
+              file=sys.stderr)
         return 2
     try:
         resultats = executer(args, racine)
+    except projet.ConfigInvalide as err:
+        print(f"Configuration invalide : {err}", file=sys.stderr)
+        return 2
     except OSError as err:
         print(f"Lecture impossible : {err}", file=sys.stderr)
         return 2

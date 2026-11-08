@@ -1,0 +1,18 @@
+{
+  "projet": "Mon encyclopédie",
+  "charte": "docs/charte-editoriale.md",
+  "dossier_articles": "articles",
+  "fichiers_index": ["INDEX.md"],
+  "dossier_brainstorm": "brainstorm",
+  "suffixe_brainstorm": "-articles-derives.md",
+  "dossier_fact_checks": "fact-checks",
+  "journal": "journal.md",
+  "gabarit_article": "docs/gabarit-article.md",
+  "categories": "docs/categories.md",
+  "champs_obligatoires": ["title", "titre_court", "slug"],
+  "champs_recommandes": ["excerpt|summary", "categories"],
+  "champ_titre_court": "titre_court",
+  "champ_statut": "publication_status",
+  "statuts": ["draft", "review", "published"],
+  "prefixe_liens": "/article/"
+}

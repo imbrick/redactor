@@ -1,4 +1,4 @@
-# Méthode scientifique pour Kongopedia
+# Méthode scientifique
 
 À charger pour les articles de sciences de la Terre, de la nature, de médecine, de mathématiques ou de technologie, et pour toute section scientifique d'un autre article (géologie d'un fleuve, datation d'un artefact, démographie).
 
@@ -48,7 +48,7 @@ Nommer la méthode (radiocarbone, potassium-argon, argon-argon, luminescence) et
 - Sources prioritaires : OMS, revues Cochrane, revues médicales à comité de lecture, ministères de la Santé.
 - Pharmacopée traditionnelle : la documenter comme pratique culturelle et, séparément, indiquer ce que la recherche a ou n'a pas établi sur son efficacité.
 
-## 7. Savoirs africains et histoire des sciences
+## 7. Savoirs endogènes et histoire des sciences
 
 Les savoirs endogènes (numération, métallurgie, ethnobotanique, astronomie, hydraulique) sont des objets d'étude à documenter avec la même rigueur que le reste : sources, datations, débats. Éviter à la fois l'effacement et la surinterprétation : une hypothèse séduisante reste une hypothèse.
 
@@ -60,4 +60,4 @@ Les savoirs endogènes (numération, métallurgie, ethnobotanique, astronomie, h
 
 ## 9. Outils de recherche
 
-Google Scholar, OpenAlex, Crossref, PubMed, HAL, SciELO, AJOL (African Journals Online), portails des observatoires et instituts nationaux (Observatoire volcanologique de Goma, INS-RDC).
+Google Scholar, OpenAlex, Crossref, PubMed, HAL, SciELO, AJOL (African Journals Online), portails des observatoires et instituts nationaux du pays concerné (par exemple l'Observatoire volcanologique de Goma ou l'INS-RDC pour la RDC).

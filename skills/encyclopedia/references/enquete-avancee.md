@@ -15,7 +15,7 @@ Chaque ligne de la table des affirmations (`preuves-et-attribution.md`) porte un
 | **P4** | Deux sources de niveau P2 ou P3, indépendantes et concordantes |
 
 Objectifs avant publication :
-- chiffres, dates et bilans humains de l'infobulle et de l'introduction : **P3**, ou **P2** confirmé par une deuxième source ;
+- chiffres, dates et bilans humains de l'encadré de synthèse et de l'introduction : **P3**, ou **P2** confirmé par une deuxième source ;
 - affirmations débattues : **P4** pour chaque position présentée, ou présentation explicite du désaccord ;
 - citations directes : **P2** au minimum, contre le texte original ;
 - rien en **P0** dans le texte publié.
@@ -34,8 +34,8 @@ Une information passe souvent par plusieurs mains : donnée brute, rapport, dép
 | Eau, climat, agriculture | FAO AQUASTAT, Global Runoff Data Centre (GRDC), Banque mondiale |
 | Biodiversité | GBIF, Liste rouge de l'UICN |
 | Patrimoine | Centre du patrimoine mondial de l'UNESCO (fiches et décisions du Comité) |
-| Droit | Journal officiel de la RDC, portail Leganet.cd |
-| Histoire coloniale | Archives africaines (SPF Affaires étrangères, Bruxelles), MRAC Tervuren, presse ancienne numérisée (Gallica, BelgicaPress de la KBR) |
+| Droit | Journaux officiels nationaux (par exemple Journal officiel de la RDC, Leganet.cd, Légifrance) |
+| Histoire coloniale | Archives des anciennes puissances coloniales (par exemple Archives africaines du SPF Affaires étrangères à Bruxelles, MRAC Tervuren, ANOM à Aix-en-Provence), presse ancienne numérisée (Gallica, BelgicaPress de la KBR) |
 | Langues et peuples | Glottolog, Ethnologue, recueils de traditions orales publiés |
 | Littérature scientifique | Crossref, OpenAlex, Persée, Cairn, HAL, AJOL |
 
@@ -44,7 +44,7 @@ Une information passe souvent par plusieurs mains : donnée brute, rapport, dép
 Lancer, dès que la bibliographie existe et à nouveau avant publication :
 
 ```bash
-python <dossier-du-skill>/scripts/verifier_references.py articles/<categorie>/<slug>.md
+python <dossier-du-skill>/scripts/verifier_references.py <dossier_articles>/<categorie>/<slug>.md
 ```
 
 Le script interroge Crossref, OpenAlex et Open Library. Lecture des statuts :

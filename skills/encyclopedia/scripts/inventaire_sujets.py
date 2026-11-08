@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Inventaire des sujets dérivés Kongopedia — que reste-t-il à rédiger, et dans quel ordre ?
+"""Inventaire des sujets dérivés — que reste-t-il à rédiger, et dans quel ordre ?
 
 Usage :
-    python inventaire_sujets.py [--top N] [--branche TEXTE] [--root <depot>]
+    python inventaire_sujets.py [--top N] [--branche TEXTE] [--root <projet>]
 
-Lit toutes les fiches ressources/brainstorm/*-articles-derives.md (lignes de tableau
-« Titre pressenti | Branche taxonomique | Priorité | Rédigé ») et les confronte au corpus articles/ :
+Le dossier des fiches (dossier_brainstorm) et leur suffixe (suffixe_brainstorm) viennent de
+redactor.json. Lit toutes les fiches <dossier_brainstorm>/*<suffixe_brainstorm> (lignes de tableau
+« Titre pressenti | Branche taxonomique | Priorité | Rédigé ») et les confronte au corpus :
   - fusionne les sujets proposés par plusieurs fiches (priorité maximale retenue) ;
   - signale les sujets déjà rédigés dont la colonne « Rédigé » n'est pas cochée ;
   - signale les sujets cochés sans article correspondant ;
   - classe les sujets à rédiger : priorité, puis nombre de fiches qui les proposent.
 
-Liste aussi les liens /article/<slug> qui attendent leur article ; un sujet déjà cité par d'autres
+Liste aussi les liens internes <prefixe_liens><slug> qui attendent leur article ; un sujet déjà cité par d'autres
 articles remonte dans le classement (priorité, puis liens en attente, puis nombre de fiches).
 
 Le rapprochement se fait sur le titre normalisé (sans article initial, accents ni parenthèses),
-comparé au titre_simple, au début du title et au slug de chaque article : un titre formulé
+comparé au titre court (champ_titre_court), au début du title et au slug de chaque article : un titre formulé
 autrement n'est pas reconnu, d'où des cas à vérifier à la main.
 
 Codes de sortie : 0 rapport produit ; 2 vérification impossible (racine ou fiches introuvables).
@@ -31,9 +32,9 @@ import unicodedata
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+import projet
 import verifier_article as va
 
-SUFFIXE_FICHE = "-articles-derives.md"
 LIGNE_RE = re.compile(r"^\|([^|]+)\|([^|]+)\|([^|]*⭐[^|]*)\|([^|]*)\|\s*$")
 ARTICLE_INITIAL_RE = re.compile(r"^(?:le|la|les|un|une|des|l)\s+")
 PARENTHESES_RE = re.compile(r"\([^)]*\)")
@@ -81,8 +82,8 @@ def cle(titre: str) -> str:
 
 # ── Lecture ────────────────────────────────────────────────────────────────
 
-def lire_fiche(chemin: Path) -> list[Sujet]:
-    nom = chemin.name[:-len(SUFFIXE_FICHE)]
+def lire_fiche(chemin: Path, suffixe: str = projet.DEFAUT.suffixe_brainstorm) -> list[Sujet]:
+    nom = chemin.name[:-len(suffixe)] if chemin.name.endswith(suffixe) else chemin.stem
     sujets = []
     for ligne in va.lire_texte(chemin).splitlines():
         m = LIGNE_RE.match(ligne.strip())
@@ -92,17 +93,24 @@ def lire_fiche(chemin: Path) -> list[Sujet]:
     return sujets
 
 
+def dossier_fiches(racine: Path) -> Path | None:
+    dossier = projet.charger(racine).dossier_brainstorm
+    return Path(racine) / dossier if dossier else None
+
+
 def lire_fiches(racine: Path) -> list[Sujet]:
-    dossier = Path(racine) / "ressources" / "brainstorm"
-    return [s for chemin in sorted(dossier.glob(f"*{SUFFIXE_FICHE}")) for s in lire_fiche(chemin)]
+    dossier, suffixe = dossier_fiches(racine), projet.charger(racine).suffixe_brainstorm
+    if dossier is None:
+        return []
+    return [s for chemin in sorted(dossier.glob(f"*{suffixe}")) for s in lire_fiche(chemin, suffixe)]
 
 
 def cles_du_corpus(racine: Path) -> set[str]:
-    cles = set()
+    cles, champ = set(), projet.charger(racine).champ_titre
     for chemin in va.lister_articles(Path(racine)):
         fm = va.lire_frontmatter(chemin) or {}
         titre_long = str(fm.get("title") or "").split("—")[0]
-        for valeur in (fm.get("titre_simple"), titre_long, str(fm.get("slug") or chemin.stem).replace("-", " ")):
+        for valeur in (fm.get(champ), titre_long, str(fm.get("slug") or chemin.stem).replace("-", " ")):
             if valeur and cle(str(valeur)):
                 cles.add(cle(str(valeur)))
     return cles
@@ -124,7 +132,7 @@ def fusionner(sujets: list[Sujet]) -> list[Candidat]:
 
 
 def liens_vers_absents(racine: Path) -> dict[str, int]:
-    """Slugs cités par des liens /article/<slug> sans article publié, avec le nombre d'articles citants."""
+    """Slugs cités par des liens internes sans article publié, avec le nombre d'articles citants."""
     slugs, liens = va.carte_du_corpus(Path(racine))
     return {cible: len(citants) for cible, citants in liens.items() if cible not in slugs}
 
@@ -151,7 +159,7 @@ def ligne_candidat(c: Candidat) -> str:
     return f"  {'⭐' * c.priorite:<3} {c.titre}  [{c.branche}]{sources}  ({', '.join(c.fiches)})"
 
 
-def afficher(rapport: Rapport, top: int) -> None:
+def afficher(rapport: Rapport, top: int, prefixe: str = projet.DEFAUT.prefixe_liens) -> None:
     multiples = sum(len(c.fiches) > 1 for c in rapport.candidats)
     print(f"== {len(rapport.candidats)} sujets distincts, dont {multiples} proposés par plusieurs fiches ; "
           f"{len(rapport.a_rediger)} à rédiger")
@@ -166,7 +174,7 @@ def afficher(rapport: Rapport, top: int) -> None:
     if rapport.liens_en_attente:
         print(f"\n== Liens en attente d'article ({len(rapport.liens_en_attente)}) : slug cité (nombre d'articles citants)")
         for slug, n in rapport.liens_en_attente:
-            print(f"  /article/{slug}  ({n})")
+            print(f"  {prefixe}{slug}  ({n})")
     print(f"\n== Priorités à rédiger (top {min(top, len(rapport.a_rediger))})")
     for c in rapport.a_rediger[:top]:
         print(ligne_candidat(c))
@@ -175,19 +183,28 @@ def afficher(rapport: Rapport, top: int) -> None:
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    ap = argparse.ArgumentParser(description="Inventorie les sujets dérivés des fiches brainstorm Kongopedia.")
+    ap = argparse.ArgumentParser(description="Inventorie les sujets dérivés des fiches de sujets du projet.")
     ap.add_argument("--top", type=int, default=TOP_PAR_DEFAUT, help="nombre de sujets prioritaires à afficher")
     ap.add_argument("--branche", help="ne garder que les sujets dont la branche contient ce texte")
-    ap.add_argument("--root", help="racine du dépôt Kongopedia (détectée sinon)")
+    ap.add_argument("--root", help="racine du projet, là où se trouve redactor.json (détectée sinon)")
     args = ap.parse_args(argv)
     if va.yaml is None:
         print("PyYAML absent : installer avec « pip install pyyaml ».", file=sys.stderr)
         return 2
     racine = Path(args.root).resolve() if args.root else va.trouver_racine(Path.cwd(), Path(__file__).resolve().parent)
-    if racine is None or not (racine / "ressources" / "brainstorm").is_dir():
-        print("Dossier ressources/brainstorm introuvable : préciser --root.", file=sys.stderr)
+    if racine is None:
+        print("Racine du projet introuvable : préciser --root.", file=sys.stderr)
         return 2
-    afficher(inventorier(racine, args.branche), args.top)
+    try:
+        dossier = dossier_fiches(racine)
+        if dossier is None or not dossier.is_dir():
+            print("Dossier des fiches de sujets introuvable : le déclarer dans redactor.json "
+                  "(« dossier_brainstorm ») ou préciser --root.", file=sys.stderr)
+            return 2
+        afficher(inventorier(racine, args.branche), args.top, projet.charger(racine).prefixe_liens)
+    except projet.ConfigInvalide as err:
+        print(f"Configuration invalide : {err}", file=sys.stderr)
+        return 2
     return 0
 
 

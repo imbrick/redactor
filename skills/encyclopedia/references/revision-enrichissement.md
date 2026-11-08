@@ -16,7 +16,7 @@ Chaque modification entre dans le **journal des modifications**, livré avec l'a
 ```md
 | Passage | Problème (rapport) | Action | Source |
 |---|---|---|---|
-| Infobulle, « Matériau » | « péroné de babouin » non établi | corrigé : « os de mammifère, espèce non identifiable » | IRSNB 2024 |
+| Encadré de synthèse, « Matériau » | « péroné de babouin » non établi | corrigé : « os de mammifère, espèce non identifiable » | IRSNB 2024 |
 | § Fouilles ultérieures | second os attribué à Brooks et Yellen | corrigé et enrichi | IRSNB ; Pletser et Huylebrouck 2016 |
 | Bibliographie n° 11 | référence introuvable | retiré | — |
 ```
@@ -36,7 +36,7 @@ Pour chaque section, poser ces questions et chercher les réponses dans les sour
 | Qu'est-ce qui a changé depuis ? | les révisions (une datation revue, une identification abandonnée) |
 | Qui le conteste, avec quels arguments ? | le débat, sous la forme Position A / Position B |
 | Quelle conséquence, quel lien avec le reste du sujet ? | la portée, sans superlatif |
-| Que dit la tradition orale ou la recherche africaine ? | le point de vue africain exigé par la charte |
+| Que disent la tradition orale et la recherche locale ? | le point de vue des sociétés concernées, selon la charte |
 
 Une réponse introuvable n'est pas comblée par une généralité : la section reste courte et la lacune va dans la note éditoriale.
 
@@ -107,5 +107,5 @@ Couper fait aussi partie de l'enrichissement : un article plus court mais entiè
 Avant de livrer, relire aussi :
 - [ ] chaque ligne du rapport de fact-check a une action dans le journal ;
 - [ ] aucun enrichissement ne repose sur une source non consultée ;
-- [ ] l'infobulle, le corps et la chronologie donnent les mêmes dates et les mêmes chiffres ;
+- [ ] l'encadré de synthèse, le corps et la chronologie donnent les mêmes dates et les mêmes chiffres ;
 - [ ] les longueurs de paragraphes varient, et aucun ne se termine par un résumé de lui-même.

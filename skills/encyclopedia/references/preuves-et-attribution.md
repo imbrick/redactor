@@ -1,10 +1,25 @@
 # Preuves et attribution
 
-Comment rendre chaque affirmation d'un article Kongopedia traçable jusqu'à sa source. Le format des notes `[^n]` et de la bibliographie est fixé par `kongopedia-editorial-skill` ; cette fiche organise le travail de preuve.
+Comment rendre chaque affirmation d'un article traçable jusqu'à sa source. Le format des notes `[^n]` et de la bibliographie peut être précisé par la charte du projet ; cette fiche organise le travail de preuve.
+
+## 0. Hiérarchie des sources (par défaut)
+
+Si la charte du projet ne fixe pas la sienne, appliquer celle-ci, dans l'ordre : remonter vers les niveaux supérieurs avant d'utiliser les niveaux inférieurs.
+
+| Niveau | Type de source | Exemples |
+|---|---|---|
+| **1 — Prioritaire** | Sources universitaires et académiques | Thèses, articles de revues à comité de lecture, monographies de presses universitaires |
+| **2 — Prioritaire** | Sources gouvernementales et institutionnelles officielles | Instituts nationaux de statistique, Nations Unies, Banque mondiale, ministères, rapports officiels |
+| **3 — Fiable** | Bases de données de référence | Glottolog, Ethnologue, GBIF, World Bank Open Data, archives nationales numérisées |
+| **4 — Fiable** | Presse de référence et journalisme documenté | Agences (AFP, Reuters), quotidiens et radios de référence du pays concerné |
+| **5 — Exploitable avec prudence** | Médias locaux et reportages de terrain | Sites d'information locaux, reportages datés et signés, avec vérification croisée |
+| **6 — Exploitable avec prudence** | Musées, institutions culturelles et archives patrimoniales | Musées nationaux, fonds d'archives, fonds photographiques |
+| **7 — Complémentaire uniquement** | Encyclopédies collaboratives | Wikipédia (comme piste, jamais comme source finale), Wikidata pour les identifiants |
+| **8 — Dernier recours, à signaler** | Blogs, plateformes amateurs, contenus non signés | Seulement si aucune source de niveau supérieur ne couvre le fait ; le statut de la source est signalé dans sa note |
 
 ## 1. Le dossier de sources (avant d'écrire)
 
-Le constituer pendant la recherche, dans la conversation ou dans un fichier de travail (ne pas le placer dans `articles/`) :
+Le constituer pendant la recherche, dans la conversation ou dans un fichier de travail (ne pas le placer dans le dossier des articles publiés) :
 
 ```md
 | # | Source (auteur, titre, année) | Type | Niveau (1-8) | Ce qu'elle établit | Dépend de | Consultée le |
@@ -51,7 +66,7 @@ Ne pas mettre de précautions partout : un fait établi s'écrit simplement. La 
 - toute citation directe ;
 - toute interprétation ou jugement attribué ;
 - tout fait surprenant, rare ou susceptible d'être contesté ;
-- toute donnée de l'infobulle qui n'est pas répétée et sourcée dans le corps.
+- toute donnée de l'encadré de synthèse qui n'est pas répétée et sourcée dans le corps.
 
 Les faits de connaissance générale (Kinshasa est la capitale de la RDC) n'en ont pas besoin. Regrouper dans une même note les sources d'un même fait, pour rester dans la limite de 8 à 10 notes fixée par la charte.
 
@@ -78,5 +93,5 @@ Avant publication, se poser ces questions et corriger ce qu'elles révèlent :
 3. Qui contesterait cette phrase, et avec quels arguments ? Sont-ils présentés ?
 4. Une seule version d'une tradition ou d'une datation est-elle présentée comme certaine ?
 5. Un nom colonial est-il donné comme référence, ou une construction « ex-… » a-t-elle survécu ?
-6. L'infobulle, le corps et le tableau chronologique donnent-ils les mêmes dates et les mêmes chiffres ?
+6. L'encadré de synthèse, le corps et le tableau chronologique donnent-ils les mêmes dates et les mêmes chiffres ?
 7. Chaque appel `[^n]` a-t-il sa note, et chaque note dit-elle ce que la source établit ?

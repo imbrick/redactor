@@ -1,6 +1,6 @@
 # Repérer les sujets dérivés et tenir le plan éditorial
 
-Chaque article Kongopedia ouvre d'autres articles : un lac, un acteur, une institution, un concept qu'il mentionne sans pouvoir les développer. Cette fiche dit comment repérer ces sujets, les évaluer, les consigner dans la fiche brainstorm et exploiter l'ensemble des fiches pour choisir le prochain article. Le format de la fiche est fixé par `ressources/PROMPT-REDACTION-ARTICLE.md` et par la section 7 du skill éditorial.
+Chaque article ouvre d'autres articles : un lac, un acteur, une institution, un concept qu'il mentionne sans pouvoir les développer. Cette fiche dit comment repérer ces sujets, les évaluer, les consigner dans la fiche de sujets dérivés (`<dossier_brainstorm>/<slug><suffixe_brainstorm>`, voir `redactor.json`) et exploiter l'ensemble des fiches pour choisir le prochain article. Le gabarit de la fiche peut être fixé par `gabarit_article` ou par la charte ; à défaut, un tableau par section thématique, au format de la section 5.
 
 ## 1. Quand repérer
 
@@ -22,7 +22,7 @@ Le repérage se fait **pendant** le travail, pas après :
 | Objets, œuvres, documents | os de Lebombo, discours du 30 juin 1960 |
 | Débats et questions transversales | restitution des biens culturels, datation des sites |
 
-Lire aussi l'infobulle, la chronologie et la section « Voir aussi » : chaque ligne qui n'a pas encore d'article est un candidat.
+Lire aussi l'encadré de synthèse, la chronologie et la section « Voir aussi » : chaque ligne qui n'a pas encore d'article est un candidat.
 
 ## 3. Le test d'autonomie
 
@@ -30,14 +30,14 @@ Un sujet entre dans la fiche s'il passe ces quatre questions :
 
 1. **Est-ce une entrée d'encyclopédie ?** Un nom propre ou un groupe nominal qu'un lecteur chercherait tel quel (« Lac Édouard »), pas une section (« Le climat au Paléolithique »).
 2. **Y a-t-il de quoi écrire ?** Au moins deux sources indépendantes probables, dont une de niveau 1 à 4. Un sujet sans sources reste une idée, notée « à documenter ».
-3. **Le sujet existe-t-il déjà ?** Lancer `inventaire_sujets.py` et chercher dans `articles/` sous toutes ses variantes de nom.
-4. **Relève-t-il du périmètre de Kongopedia ?** Afrique, mémoire, histoire, éducation et leurs liens avec le monde.
+3. **Le sujet existe-t-il déjà ?** Lancer `inventaire_sujets.py` et chercher dans le dossier des articles sous toutes ses variantes de nom.
+4. **Relève-t-il du périmètre du projet ?** Celui que fixe la charte.
 
 ## 4. Fixer la priorité
 
 | Priorité | Critère |
 |---|---|
-| ⭐⭐⭐ | Sujet central pour la RDC ou l'Afrique centrale, souvent cité dans le corpus, sources disponibles ; son absence crée un trou visible (un lien « Voir aussi » sans cible, un acteur majeur sans biographie) |
+| ⭐⭐⭐ | Sujet central pour le périmètre du projet, souvent cité dans le corpus, sources disponibles ; son absence crée un trou visible (un lien « Voir aussi » sans cible, un acteur majeur sans biographie) |
 | ⭐⭐ | Sujet utile qui approfondit un article existant, sources disponibles mais moins abondantes |
 | ⭐ | Sujet de complément ou de niche, ou sujet aux sources encore incertaines |
 
@@ -46,9 +46,9 @@ Un sujet proposé par plusieurs fiches monte naturellement en tête du plan édi
 ## 5. Consigner dans la fiche
 
 - Une ligne par sujet : `| Titre pressenti | Branche taxonomique | Priorité | Rédigé |`, dans la section thématique qui convient.
-- Le **titre pressenti** suit les règles du `titre_simple` (nom direct, sans sous-titre) ; garder la même formulation d'une fiche à l'autre pour que l'inventaire reconnaisse les doublons.
-- La **branche** vient de `ressources/categories/categories.md`.
-- Mettre à jour le récapitulatif chiffré en bas de fiche et la ligne « Source » (chemin `articles/…`).
+- Le **titre pressenti** suit les règles du titre court (`champ_titre_court`) (nom direct, sans sous-titre) ; garder la même formulation d'une fiche à l'autre pour que l'inventaire reconnaisse les doublons.
+- La **branche** vient de la taxonomie du projet (`categories`).
+- Mettre à jour le récapitulatif chiffré en bas de fiche et la ligne « Source » (chemin de l'article-mère).
 - À chaque révision d'un article, compléter sa fiche avec les sujets découverts.
 - À la publication d'un article dérivé, cocher `#` dans la colonne « Rédigé » de **toutes** les fiches qui le proposent.
 

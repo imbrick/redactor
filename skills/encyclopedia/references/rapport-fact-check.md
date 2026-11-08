@@ -1,12 +1,12 @@
 # Rapport de fact-check : rédaction, archivage et suivi
 
-Tout fact-check produit un rapport écrit, archivé dans le dépôt. Il sert trois usages : décider de la suite (corrections ciblées ou révision complète), alimenter le journal des modifications de la révision (`revision-enrichissement.md`), et garder la trace de ce qui a été vérifié, avec quelles sources, à quelle date.
+Tout fact-check produit un rapport écrit, archivé dans le dépôt quand le projet déclare un `dossier_fact_checks` (`redactor.json`), livré dans la conversation sinon. Il sert trois usages : décider de la suite (corrections ciblées ou révision complète), alimenter le journal des modifications de la révision (`revision-enrichissement.md`), et garder la trace de ce qui a été vérifié, avec quelles sources, à quelle date.
 
 ## 1. Où et comment archiver
 
-- Fichier : `ressources/fact-checks/<slug>-AAAA-MM-JJ.md` (date du fact-check). Un nouveau fact-check du même article crée un nouveau fichier, il n'écrase pas l'ancien.
-- Registre : une ligne par rapport dans `ressources/fact-checks/README.md`, mise à jour à chaque changement de statut.
-- Le dossier `ressources/` est ignoré par git : un nouveau rapport s'ajoute avec `git add -f` (seulement quand l'utilisateur demande un commit).
+- Fichier : `<dossier_fact_checks>/<slug>-AAAA-MM-JJ.md` (date du fact-check). Un nouveau fact-check du même article crée un nouveau fichier, il n'écrase pas l'ancien.
+- Registre : une ligne par rapport dans `<dossier_fact_checks>/README.md`, mise à jour à chaque changement de statut.
+- Si ce dossier est ignoré par git, un nouveau rapport s'ajoute avec `git add -f` (seulement quand l'utilisateur demande un commit).
 
 ## 2. Statuts
 
@@ -23,11 +23,11 @@ Quand l'article est révisé, on ne réécrit pas le rapport : on complète sa s
 
 ````markdown
 ---
-article: "articles/<chemin>/<slug>.md"
+article: "<dossier_articles>/<chemin>/<slug>.md"
 slug: "<slug>"
-titre: "<titre_simple>"
+titre: "<titre court>"
 date_verification: "AAAA-MM-JJ"
-methode: "skill kongopedia-redaction, mode Fact-check"
+methode: "skill redactor:encyclopedia, mode Fact-check"
 statut: "ouvert"
 verdict: "révision complète | corrections ciblées | conforme"
 bilan:
@@ -65,7 +65,7 @@ Point de vue, jugements non attribués, débats présentés à sens unique (N1�
 Notes, structure, coquilles, liens cassés, frontmatter (F1…).
 
 ## 8. Sujets dérivés repérés
-Liste à reporter dans la fiche brainstorm.
+Liste à reporter dans la fiche de sujets dérivés.
 
 ## 9. Sources consultées pour la vérification
 Liste des sources effectivement lues.

@@ -1,15 +1,30 @@
-"""Tests du vérificateur d'articles Kongopedia (stdlib unittest).
+"""Tests du vérificateur d'articles (stdlib unittest).
 
 Lancer : python -m unittest test_verifier_article.py  (depuis scripts/)
 """
 
+import json
 import shutil
 import tempfile
 import textwrap
 import unittest
 from pathlib import Path
 
+import projet
 import verifier_article as va
+
+# Configuration d'un projet complet : celle de Kongopedia, qui a servi de modèle au skill.
+CONFIG_COMPLETE = {
+    "projet": "Kongopedia",
+    "dossier_articles": "articles",
+    "fichiers_index": ["INDEX.md", "INDEX-ALPHABETIQUE.md"],
+    "dossier_brainstorm": "ressources/brainstorm",
+    "suffixe_brainstorm": "-articles-derives.md",
+    "champs_obligatoires": ["title", "titre_simple", "slug"],
+    "champs_recommandes": ["excerpt|summary", "categories"],
+    "champ_titre_court": "titre_simple",
+    "prefixe_liens": "/article/",
+}
 
 BON_FRONTMATTER = textwrap.dedent('''\
     ---
@@ -47,10 +62,15 @@ def codes(resultats):
 
 
 class DepotTemporaire(unittest.TestCase):
-    """Crée un faux dépôt Kongopedia : articles/, index, brainstorm."""
+    """Crée un faux projet complet : redactor.json, articles/, index, brainstorm."""
+
+    config = CONFIG_COMPLETE
 
     def setUp(self):
+        projet._charger.cache_clear()
         self.racine = Path(tempfile.mkdtemp())
+        if self.config is not None:
+            self.ecrire(projet.NOM_FICHIER, json.dumps(self.config))
         (self.racine / "articles" / "geographie").mkdir(parents=True)
         (self.racine / "ressources" / "brainstorm").mkdir(parents=True)
         self.ecrire_index([])
@@ -283,7 +303,7 @@ class TestPublication(DepotTemporaire):
     def test_absent_des_index_et_sans_brainstorm(self):
         resultats = codes(self.verifier())
         self.assertIn("INDEX_ABSENT", resultats)
-        self.assertIn("INDEX_ALPHA_ABSENT", resultats)
+        self.assertIn("INDEX_2_ABSENT", resultats)
         self.assertIn("BRAINSTORM_ABSENT", resultats)
 
     def test_publication_non_bloquante_pour_un_brouillon(self):
@@ -351,6 +371,52 @@ class TestCorpus(DepotTemporaire):
         self.assertIn("CORPUS_COMPTEUR", resultats)
         self.assertIn("CORPUS_NON_INDEXE", resultats)
         self.assertIn("CORPUS_LIEN_MORT", resultats)
+
+
+class TestProjetSansConfiguration(DepotTemporaire):
+    """Sans redactor.json : seuls title et slug sont obligatoires, ni index ni fiche exigés."""
+
+    config = None
+
+    def test_titre_court_et_index_non_exiges(self):
+        fm = BON_FRONTMATTER.replace('titre_simple: "Lac Kivu"\n', "")
+        resultats = codes(self.verifier(frontmatter=fm))
+        self.assertFalse(resultats & {"FM_TITRE_SIMPLE", "INDEX_ABSENT", "BRAINSTORM_ABSENT", "FM_EXCERPT"})
+
+    def test_title_reste_obligatoire(self):
+        fm = BON_FRONTMATTER.replace('title: "Lac Kivu — Grand lac du Rift Albertin"\n', "")
+        self.assertIn("FM_TITLE", codes(self.verifier(frontmatter=fm)))
+
+    def test_racine_detectee_par_le_dossier_articles(self):
+        self.assertEqual(va.trouver_racine(self.racine / "articles" / "geographie"), self.racine)
+
+
+class TestConfiguration(DepotTemporaire):
+    config = dict(CONFIG_COMPLETE, dossier_articles="contenu", prefixe_liens="/wiki/", fichiers_index=[])
+
+    def test_dossier_et_prefixe_personnalises(self):
+        corps = corps_voir_aussi("- [Semliki](/wiki/semliki)")
+        resultats = codes(self.verifier(corps=corps, rel="contenu/geographie/lac-kivu.md"))
+        self.assertNotIn("FICHIER_EMPLACEMENT", resultats)
+        self.assertNotIn("VOIR_AUSSI_SANS_LIEN", resultats)
+
+    def test_article_hors_du_dossier_configure(self):
+        self.assertIn("FICHIER_EMPLACEMENT", codes(self.verifier()))
+
+    def test_racine_detectee_par_redactor_json(self):
+        sous = self.racine / "contenu" / "geographie"
+        sous.mkdir(parents=True)
+        self.assertEqual(va.trouver_racine(sous), self.racine)
+
+    def test_cle_inconnue_refusee(self):
+        with self.assertRaises(projet.ConfigInvalide):
+            projet.depuis_dict({"dossier_article": "x"})
+
+    def test_configuration_invalide_code_2(self):
+        self.ecrire(projet.NOM_FICHIER, "{ pas du json")
+        projet._charger.cache_clear()
+        chemin = self.ecrire("contenu/geographie/lac-kivu.md", BON_FRONTMATTER + "\n" + BON_CORPS)
+        self.assertEqual(va.main([str(chemin), "--root", str(self.racine)]), 2)
 
 
 if __name__ == "__main__":

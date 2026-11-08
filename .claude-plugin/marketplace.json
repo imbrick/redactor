@@ -1,0 +1,16 @@
+{
+  "name": "redactor",
+  "description": "Marketplace du plugin Redactor : écriture de contenu de l'enquête à la publication.",
+  "owner": {
+    "name": "Imbrick",
+    "url": "https://github.com/imbrick"
+  },
+  "plugins": [
+    {
+      "name": "redactor",
+      "source": "./",
+      "description": "Écriture de contenu de l'enquête à la publication : encyclopédie (disponible), roman, nouvelle, manga, journal, magazine (prévus).",
+      "category": "productivity"
+    }
+  ]
+}

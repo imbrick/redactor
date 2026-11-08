@@ -3,6 +3,7 @@
 Lancer : python -m unittest test_inventaire_sujets.py  (depuis scripts/)
 """
 
+import json
 import shutil
 import tempfile
 import textwrap
@@ -10,6 +11,13 @@ import unittest
 from pathlib import Path
 
 import inventaire_sujets as inv
+import projet
+
+CONFIG = {
+    "dossier_brainstorm": "ressources/brainstorm",
+    "fichiers_index": ["INDEX.md"],
+    "champ_titre_court": "titre_simple",
+}
 
 FICHE_HYDRO = textwrap.dedent('''\
     # Brainstorm — Articles dérivables de l'article « Hydrographie de la RDC »
@@ -46,7 +54,9 @@ def article(titre_simple, slug):
 
 class DepotTemporaire(unittest.TestCase):
     def setUp(self):
+        projet._charger.cache_clear()
         self.racine = Path(tempfile.mkdtemp())
+        self.ecrire(projet.NOM_FICHIER, json.dumps(CONFIG))
         self.ecrire("ressources/brainstorm/hydrographie-de-la-rdc-articles-derives.md", FICHE_HYDRO)
         self.ecrire("ressources/brainstorm/wagenia-articles-derives.md", FICHE_WAGENIA)
         self.ecrire("articles/geographie/lac-mai-ndombe.md", article("Lac Mai-Ndombe", "lac-mai-ndombe"))
@@ -125,6 +135,11 @@ class TestLiensEnAttente(DepotTemporaire):
 class TestPointEntree(DepotTemporaire):
     def test_sortie_normale(self):
         self.assertEqual(inv.main(["--root", str(self.racine), "--top", "2"]), 0)
+
+    def test_dossier_de_fiches_non_declare(self):
+        self.ecrire(projet.NOM_FICHIER, "{}")
+        projet._charger.cache_clear()
+        self.assertEqual(inv.main(["--root", str(self.racine)]), 2)
 
     def test_sans_dossier_brainstorm(self):
         shutil.rmtree(self.racine / "ressources")
